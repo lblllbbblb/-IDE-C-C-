@@ -1,0 +1,4 @@
+#ifndef CPPHIGHLIGHTER_H
+#define CPPHIGHLIGHTER_H
+
+#endif // CPPHIGHLIGHTER_H
