@@ -73,6 +73,14 @@ build CMakeFiles/ECE-IDE.dir/mainwindow.cpp.obj: CXX_COMPILER__ECE-IDE_unscanned
   OBJECT_DIR = CMakeFiles\ECE-IDE.dir
   OBJECT_FILE_DIR = CMakeFiles\ECE-IDE.dir
 
+build CMakeFiles/ECE-IDE.dir/cpphighlighter.cpp.obj: CXX_COMPILER__ECE-IDE_unscanned_Debug D$:/ECE-IDE/cpphighlighter.cpp || cmake_object_order_depends_target_ECE-IDE
+  DEFINES = -DMINGW_HAS_SECURE_API=1 -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NEEDS_QMAIN -DQT_WIDGETS_LIB -DUNICODE -DWIN32 -DWIN64 -D_ENABLE_EXTENDED_ALIGNED_STORAGE -D_UNICODE -D_WIN64
+  DEP_FILE = CMakeFiles\ECE-IDE.dir\cpphighlighter.cpp.obj.d
+  FLAGS = -DQT_QML_DEBUG -g -std=gnu++17 -fdiagnostics-color=always
+  INCLUDES = -ID:/ECE-IDE/build/Desktop_Qt_6_9_2_MinGW_64_bit-Debug/ECE-IDE_autogen/include -isystem C:/Qt/6.9.2/mingw_64/include/QtCore -isystem C:/Qt/6.9.2/mingw_64/include -isystem C:/Qt/6.9.2/mingw_64/mkspecs/win32-g++ -isystem C:/Qt/6.9.2/mingw_64/include/QtWidgets -isystem C:/Qt/6.9.2/mingw_64/include/QtGui
+  OBJECT_DIR = CMakeFiles\ECE-IDE.dir
+  OBJECT_FILE_DIR = CMakeFiles\ECE-IDE.dir
+
 
 # =============================================================================
 # Link build statements for EXECUTABLE target ECE-IDE
@@ -81,7 +89,7 @@ build CMakeFiles/ECE-IDE.dir/mainwindow.cpp.obj: CXX_COMPILER__ECE-IDE_unscanned
 #############################################
 # Link the executable ECE-IDE.exe
 
-build ECE-IDE.exe: CXX_EXECUTABLE_LINKER__ECE-IDE_Debug CMakeFiles/ECE-IDE.dir/ECE-IDE_autogen/mocs_compilation.cpp.obj CMakeFiles/ECE-IDE.dir/main.cpp.obj CMakeFiles/ECE-IDE.dir/mainwindow.cpp.obj | C$:/Qt/6.9.2/mingw_64/lib/libQt6Widgets.a C$:/Qt/6.9.2/mingw_64/lib/libQt6Gui.a C$:/Qt/6.9.2/mingw_64/lib/libQt6Core.a C$:/Qt/6.9.2/mingw_64/lib/libQt6EntryPoint.a || ECE-IDE_autogen ECE-IDE_autogen_timestamp_deps
+build ECE-IDE.exe: CXX_EXECUTABLE_LINKER__ECE-IDE_Debug CMakeFiles/ECE-IDE.dir/ECE-IDE_autogen/mocs_compilation.cpp.obj CMakeFiles/ECE-IDE.dir/main.cpp.obj CMakeFiles/ECE-IDE.dir/mainwindow.cpp.obj CMakeFiles/ECE-IDE.dir/cpphighlighter.cpp.obj | C$:/Qt/6.9.2/mingw_64/lib/libQt6Widgets.a C$:/Qt/6.9.2/mingw_64/lib/libQt6Gui.a C$:/Qt/6.9.2/mingw_64/lib/libQt6Core.a C$:/Qt/6.9.2/mingw_64/lib/libQt6EntryPoint.a || ECE-IDE_autogen ECE-IDE_autogen_timestamp_deps
   FLAGS = -DQT_QML_DEBUG -g
   LINK_FLAGS = -mwindows
   LINK_LIBRARIES = C:/Qt/6.9.2/mingw_64/lib/libQt6Widgets.a  C:/Qt/6.9.2/mingw_64/lib/libQt6Gui.a  C:/Qt/6.9.2/mingw_64/lib/libQt6Core.a  -lmpr  -luserenv  -lmingw32  C:/Qt/6.9.2/mingw_64/lib/libQt6EntryPoint.a  -lshell32  -ld3d11  -ldxgi  -ldxguid  -ld3d12  -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32

@@ -2,17 +2,22 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QTextEdit>
 #include <QProcess>
-#include <QTabWidget>
-#include <QPushButton>
-#include <QVBoxLayout>
-#include <QHBoxLayout>
+#include <QTextEdit>
+#include <QFile>
+#include <QTextStream>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QDir>
+#include <QSettings>
 #include <QMenuBar>
-#include <QMenu>
-#include <QAction>
+#include <QStatusBar>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QPushButton>
+#include <QTabWidget>
+
+#include "cpphighlighter.h" // 包含头文件
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -29,19 +34,20 @@ public:
 private slots:
     void onCompileClicked();
     void onRunClicked();
-    void onProcessFinished(int exitCode, QProcess::ExitStatus exitStatus);
-    void onProcessErrorOccurred(QProcess::ProcessError error);
     void onSaveClicked();
     void onOpenClicked();
+    void onProcessFinished(int exitCode, QProcess::ExitStatus exitStatus);
+    void onProcessErrorOccurred(QProcess::ProcessError error);
 
 private:
-    Ui::MainWindow *ui;
-    QTextEdit *codeEditor;       // 代码编辑区
-    QTextEdit *outputConsole;    // 输出控制台
-    QProcess *compilerProcess;   // 编译进程
-    QString currentFilePath;     // 当前文件路径
+    void setupUI();
+    void createMenus();
 
-    void setupUI();              // 设置界面
-    void createMenus();          // 创建菜单
+    Ui::MainWindow *ui;
+    QTextEdit *codeEditor;
+    QTextEdit *outputConsole;
+    QProcess *compilerProcess;
+    QString currentFilePath;
+    CppHighlighter *cppHighlighter; // 声明高亮器指针
 };
 #endif // MAINWINDOW_H

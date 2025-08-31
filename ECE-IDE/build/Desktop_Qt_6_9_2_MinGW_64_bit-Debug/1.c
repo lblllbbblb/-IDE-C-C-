@@ -1,8 +1,21 @@
 #include <iostream>
+using namespace std;
 
 int main() {
-    std::cout << "Hello from C++!" << std::endl;
-    // int age = 20;          // 整数类型
-    // double height = 1.75;  // 双精度浮点数
+    const int count = 10;
+    long long a = 0, b = 1, next;
+    
+    cout << "前" << count << "个斐波那契数: ";
+    cout << a << " " << b << " ";
+    
+    for (int i = 3; i <= count; ++i) {
+        next = a + b;
+        a = b;
+        b = next;
+        cout << next << " ";
+    }
+    cout << endl;
+    
     return 0;
 }
+    

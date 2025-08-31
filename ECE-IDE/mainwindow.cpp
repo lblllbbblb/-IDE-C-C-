@@ -6,15 +6,20 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
     , compilerProcess(new QProcess(this))
+    , cppHighlighter(nullptr) // 初始化为 nullptr
 {
     ui->setupUi(this);
     setupUI();
     createMenus();
 
+    // 在 codeEditor 创建后，初始化语法高亮器
+    cppHighlighter = new CppHighlighter(codeEditor->document()); // 将高亮器关联到 codeEditor 的文档
+
     // 连接进程信号与槽
     connect(compilerProcess, &QProcess::finished, this, &MainWindow::onProcessFinished);
     connect(compilerProcess, &QProcess::errorOccurred, this, &MainWindow::onProcessErrorOccurred);
 }
+
 
 MainWindow::~MainWindow()
 {

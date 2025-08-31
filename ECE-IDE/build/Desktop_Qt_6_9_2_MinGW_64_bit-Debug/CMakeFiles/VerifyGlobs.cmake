@@ -43,8 +43,10 @@ endif()
 file(GLOB_RECURSE NEW_GLOB LIST_DIRECTORIES false "D:/ECE-IDE/*.cpp")
 set(OLD_GLOB
   "D:/ECE-IDE/build/Desktop_Qt_6_9_2_MinGW_64_bit-Debug/CMakeFiles/3.30.5/CompilerIdCXX/CMakeCXXCompilerId.cpp"
+  "D:/ECE-IDE/build/Desktop_Qt_6_9_2_MinGW_64_bit-Debug/ECE-IDE_autogen/EWIEGA46WW/moc_cpphighlighter.cpp"
   "D:/ECE-IDE/build/Desktop_Qt_6_9_2_MinGW_64_bit-Debug/ECE-IDE_autogen/EWIEGA46WW/moc_mainwindow.cpp"
   "D:/ECE-IDE/build/Desktop_Qt_6_9_2_MinGW_64_bit-Debug/ECE-IDE_autogen/mocs_compilation.cpp"
+  "D:/ECE-IDE/cpphighlighter.cpp"
   "D:/ECE-IDE/main.cpp"
   "D:/ECE-IDE/mainwindow.cpp"
   )

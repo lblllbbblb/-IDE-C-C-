@@ -441,6 +441,7 @@
 	"SETTINGS_FILE" : "D:/ECE-IDE/build/Desktop_Qt_6_9_2_MinGW_64_bit-Debug/CMakeFiles/ECE-IDE_autogen.dir/AutogenUsed.txt",
 	"SOURCES" : 
 	[
+		[ "D:/ECE-IDE/cpphighlighter.cpp", "MU", null ],
 		[ "D:/ECE-IDE/main.cpp", "MU", null ],
 		[ "D:/ECE-IDE/mainwindow.cpp", "MU", null ]
 	],
