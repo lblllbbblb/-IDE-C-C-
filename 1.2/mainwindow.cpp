@@ -2,6 +2,11 @@
 #include "ui_mainwindow.h"
 #include <QDateTime>
 #include <QTextCursor> // For QTextCursor
+#include <QFileDialog> // For QFileDialog
+#include <QMessageBox> // For QMessageBox
+#include <QLabel>      // For QLabel
+#include <QCheckBox>   // For QCheckBox
+#include <QPushButton> // For QPushButton in dialog
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -34,6 +39,10 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     delete ui;
+    // Ensure findDialog is deleted if it was created
+    if (findDialog) {
+        delete findDialog;
+    }
 }
 
 void MainWindow::setupUI()
@@ -114,6 +123,13 @@ void MainWindow::createMenus()
     fileMenu->addSeparator();
     fileMenu->addAction(exitAction);
 
+    // 编辑菜单 (New)
+    QMenu *editMenu = menuBar()->addMenu("编辑");
+    QAction *findAction = new QAction("查找...", this);
+    findAction->setShortcuts(QKeySequence::Find); // Ctrl+F
+    connect(findAction, &QAction::triggered, this, &MainWindow::onFindClicked);
+    editMenu->addAction(findAction);
+
     // 编译菜单
     QMenu *buildMenu = menuBar()->addMenu("编译");
 
@@ -192,7 +208,7 @@ void MainWindow::onRunClicked()
 void MainWindow::onProcessFinished(int exitCode, QProcess::ExitStatus exitStatus)
 {
     // 如果是编译进程，确保清空输出
-    if (compilerProcess->program() == "g++") {
+    if (compilerProcess->program().contains("g++")) { // Check for g++ or similar compiler name
         outputConsole->append(compilerProcess->readAllStandardOutput());
         outputConsole->append(compilerProcess->readAllStandardError());
     }
@@ -294,5 +310,86 @@ void MainWindow::onOpenClicked()
         outputConsole->moveCursor(QTextCursor::End);
     } else {
         QMessageBox::warning(this, "错误", "无法打开文件: " + file.errorString());
+    }
+}
+
+// New: Slot to show find dialog
+void MainWindow::onFindClicked()
+{
+    if (!findDialog) { // Create the dialog only once
+        findDialog = new QDialog(this);
+        findDialog->setWindowTitle("查找");
+        QVBoxLayout *dialogLayout = new QVBoxLayout(findDialog);
+
+        QHBoxLayout *inputLayout = new QHBoxLayout();
+        inputLayout->addWidget(new QLabel("查找内容:"));
+        findLineEdit = new QLineEdit();
+        inputLayout->addWidget(findLineEdit);
+        dialogLayout->addLayout(inputLayout);
+
+        caseSensitiveCheckBox = new QCheckBox("区分大小写");
+        dialogLayout->addWidget(caseSensitiveCheckBox);
+
+        QHBoxLayout *buttonLayout = new QHBoxLayout();
+        QPushButton *findNextButton = new QPushButton("查找下一个");
+        QPushButton *findPreviousButton = new QPushButton("查找上一个");
+        QPushButton *closeButton = new QPushButton("关闭");
+
+        connect(findNextButton, &QPushButton::clicked, this, &MainWindow::findNext);
+        connect(findPreviousButton, &QPushButton::clicked, this, &MainWindow::findPrevious);
+        connect(closeButton, &QPushButton::clicked, findDialog, &QDialog::close);
+
+        buttonLayout->addWidget(findNextButton);
+        buttonLayout->addWidget(findPreviousButton);
+        buttonLayout->addWidget(closeButton);
+        dialogLayout->addLayout(buttonLayout);
+
+        findDialog->setLayout(dialogLayout);
+    }
+
+    findDialog->show();
+    findDialog->raise();
+    findDialog->activateWindow();
+}
+
+// New: Slot to find next occurrence
+void MainWindow::findNext()
+{
+    QString searchString = findLineEdit->text();
+    if (searchString.isEmpty()) {
+        QMessageBox::information(this, "查找", "请输入查找内容。");
+        return;
+    }
+
+    QTextDocument::FindFlags flags;
+    if (caseSensitiveCheckBox->isChecked()) {
+        flags |= QTextDocument::FindCaseSensitively;
+    }
+
+    bool found = codeEditor->find(searchString, flags);
+
+    if (!found) {
+        QMessageBox::information(this, "查找", "未找到 \"" + searchString + "\"。");
+    }
+}
+
+// New: Slot to find previous occurrence
+void MainWindow::findPrevious()
+{
+    QString searchString = findLineEdit->text();
+    if (searchString.isEmpty()) {
+        QMessageBox::information(this, "查找", "请输入查找内容。");
+        return;
+    }
+
+    QTextDocument::FindFlags flags = QTextDocument::FindBackward; // 查找上一个
+    if (caseSensitiveCheckBox->isChecked()) {
+        flags |= QTextDocument::FindCaseSensitively;
+    }
+
+    bool found = codeEditor->find(searchString, flags);
+
+    if (!found) {
+        QMessageBox::information(this, "查找", "未找到 \"" + searchString + "\"。");
     }
 }
