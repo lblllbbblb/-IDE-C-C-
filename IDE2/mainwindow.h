@@ -35,6 +35,8 @@ private slots:
     void on_open();
     // 保存文件的槽函数
     void on_save();
+    // 另存文件的槽函数 (你的新代码中是 on_othersave, 这里保持 on_anothersave)
+    void on_anothersave(); // 对应你的 on_othersave
     // 复制文本的槽函数
     void on_copy();
     // 粘贴文本的槽函数
@@ -45,10 +47,11 @@ private slots:
     void on_selectAll();
     // 显示“关于”信息的槽函数
     void on_about();
-    // 编译代码的槽函数
+
+    // *** 替换后的编译和运行槽函数 ***
     void on_compile();
-    // 运行程序的槽函数
     void on_run();
+    void on_compileAndRun(); // 新增的槽函数
 
 private:
     Ui::MainWindow *ui;         // Qt设计师生成的界面对象指针
@@ -62,10 +65,12 @@ private:
 
     QAction *file_open;         // “文件”->“打开”动作
     QAction *file_save;         // “文件”->“保存”动作
+    QAction *file_anothersave;         // “文件”->“另存”动作
     QAction *file_exit;         // “文件”->“退出”动作
 
     QAction *build_compile;     // “构建”->“编译”动作
     QAction *build_run;         // “构建”->“运行”动作
+    QAction *build_compileAndRun; // 新增的“构建”->“编译并运行”动作
 
     CppHighlighter *cppHighlighter; // 声明高亮器指针
 };

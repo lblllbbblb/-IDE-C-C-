@@ -29,12 +29,16 @@ MainWindow::MainWindow(QWidget *parent)
     file_open->setShortcut(tr("Ctrl+O")); // 设置打开的快捷键 Ctrl+O
 
     file_save = new QAction("保存", this);
-    file_save->setShortcut(tr("Ctrl+S")); // 设置保存的快捷键 Ctrl+S
+    file_save->setShortcut(tr("Ctrl+S")); // 设置另存的快捷键 Ctrl+S
+
+    file_anothersave = new QAction("另存", this);
+    file_anothersave->setShortcut(tr("Ctrl+Shift+s")); // 设置另存的快捷键 Ctrl+Shift+S
 
     file_exit = new QAction("退出", this);
 
     file->addAction(file_open);  // 添加“打开”动作
     file->addAction(file_save);  // 添加“保存”动作
+    file->addAction(file_anothersave);  // 添加“另存”动作
     file->addSeparator();        // 添加分隔符
     file->addAction(file_exit);  // 添加“退出”动作
 
@@ -44,6 +48,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     build_run = new QAction("运行",this);
     build->addAction(build_run);     // 添加“运行”动作
+
+    build_compileAndRun = new QAction("编译并运行", this); // 新增动作
+    build->addAction(build_compileAndRun); // 添加“编译并运行”动作
 
     // —— 编辑菜单动作 ——
     QAction *copy_act = new QAction("复制", this);
@@ -70,6 +77,7 @@ MainWindow::MainWindow(QWidget *parent)
     // —— 动作与槽函数关联（连接信号与槽） ——
     connect(file_open, &QAction::triggered, this, &MainWindow::on_open);       // 连接“打开”动作到 on_open 槽
     connect(file_save, &QAction::triggered, this, &MainWindow::on_save);       // 连接“保存”动作到 on_save 槽
+    connect(file_anothersave, &QAction::triggered, this, &MainWindow::on_anothersave);       // 连接“另存”动作到 on_anothersave 槽
     connect(file_exit, &QAction::triggered, this, &MainWindow::close);         // 连接“退出”动作到 close 槽 (关闭窗口)
 
     connect(copy_act, &QAction::triggered, this, &MainWindow::on_copy);        // 连接“复制”动作到 on_copy 槽
@@ -80,6 +88,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(build_compile, &QAction::triggered, this, &MainWindow::on_compile); // 连接“编译”动作到 on_compile 槽
     connect(build_run, &QAction::triggered, this, &MainWindow::on_run);         // 连接“运行”动作到 on_run 槽
+    connect(build_compileAndRun, &QAction::triggered, this, &MainWindow::on_compileAndRun); // 连接“编译并运行”动作到 on_compileAndRun 槽
 }
 
 // MainWindow 类的析构函数
@@ -127,8 +136,48 @@ void MainWindow::on_open()
     fclose(p); // 关闭文件
 }
 
-// 保存文件的槽函数
 void MainWindow::on_save()
+{
+    if(filename.isEmpty()){
+        // 弹出文件对话框，让用户选择保存文件的位置和名称
+        filename = QFileDialog::getSaveFileName(this, "保存文件", QString(), "C/C++ Files (*.c *.cpp *.h);;Text Files (*.txt);;All Files (*)");
+        if(filename.isEmpty()){
+            return; // 如果用户取消选择，则返回
+        }
+
+        // 使用 C 标准库的 fopen 以写入模式打开文件
+        FILE *p = fopen(filename.toUtf8().data(),"w");
+        if(p == NULL){
+            QMessageBox::information(this,"错误","保存文件失败");
+            return; // 如果文件打开失败，则返回
+        } else {
+            // 获取 QTextEdit 中的纯文本内容，并转换为 UTF-8 编码的 QByteArray
+            QByteArray textData = text1->toPlainText().toUtf8();
+            // 将文本数据写入文件
+            fputs(textData.constData(), p);
+            fclose(p); // 关闭文件
+            QMessageBox::information(this, "成功", "文件保存成功");
+        }
+        return; // 如果用户首次建立文件，则新建一个文件
+    }
+
+    // 使用 C 标准库的 fopen 以写入模式打开文件
+    FILE *p = fopen(filename.toUtf8().data(),"w");
+    if(p == NULL){
+        QMessageBox::information(this,"错误","保存文件失败");
+        return; // 如果文件打开失败，则返回
+    } else {
+        // 获取 QTextEdit 中的纯文本内容，并转换为 UTF-8 编码的 QByteArray
+        QByteArray textData = text1->toPlainText().toUtf8();
+        // 将文本数据写入文件
+        fputs(textData.constData(), p);
+        fclose(p); // 关闭文件
+        QMessageBox::information(this, "成功", "文件保存成功");
+    } // 如果用户不是首次建立文件，则保存到原来文件
+}
+
+// 保存文件的槽函数
+void MainWindow::on_anothersave() // 对应你提供的 on_othersave
 {
     // 弹出文件对话框，让用户选择保存文件的位置和名称
     filename = QFileDialog::getSaveFileName(this, "保存文件", QString(), "C/C++ Files (*.c *.cpp *.h);;Text Files (*.txt);;All Files (*)");
@@ -181,41 +230,43 @@ void MainWindow::on_about()
     QMessageBox::information(this, "关于", "这是一个简单的C/C++文本编辑器，具有编译和运行功能。");
 }
 
-// 编译代码的槽函数
+// *** 替换后的编译代码的槽函数 ***
 void MainWindow::on_compile()
 {
-    // 检查当前文件是否已保存
     if (filename.isEmpty()) {
-        QMessageBox::warning(this, "警告", "请先保存文件再编译。");
-        return;
+        on_anothersave(); // 调用另存为函数
+        if (filename.isEmpty()) { // 如果用户在另存为对话框中取消，则再次返回
+            return;
+        }
     }
 
-    // 获取源文件的完整路径
-    QString sourceFile = filename;
+    // 先保存当前文本到文件
+    FILE *p = fopen(filename.toUtf8().data(),"w");
+    if(p == NULL){
+        QMessageBox::information(this,"错误","保存文件失败");
+        return;
+    } else {
+        QByteArray textData = text1->toPlainText().toUtf8();
+        fputs(textData.constData(), p);
+        fclose(p);
+    }
 
     // 构建可执行文件的名称和路径
-    QFileInfo fileInfo(sourceFile);
+    QFileInfo fileInfo(filename);
     QString baseName = fileInfo.completeBaseName(); // 获取文件名（不带扩展名）
-    // 将可执行文件放在与源文件相同的目录下
     QString executableFile = fileInfo.absolutePath() + QDir::separator() + baseName;
 
-    // 根据操作系统添加可执行文件后缀
 #ifdef Q_OS_WIN
     executableFile += ".exe"; // Windows 系统
-#else
-    // Linux/macOS 无需 .exe 后缀，但可以根据需要添加
 #endif
 
-    // 构建 g++ 编译命令
-    // 例如：g++ -o "path/to/myprogram.exe" "path/to/myprogram.c"
-    QString command = "g++ -o \"" + executableFile + "\" \"" + sourceFile + "\"";
+    // 使用 g++ 进行编译（因为你的原始代码是 C++ 项目，这里继续使用 g++）
+    // 如果你确定只编译 C 文件，可以将 "g++" 改为 "gcc"
+    QString command = "g++ -o \"" + executableFile + "\" \"" + filename + "\"";
     QMessageBox::information(this, "提示", "编译命令: " + command);
 
-    // 执行编译命令
-    // system() 函数执行外部命令并等待其完成
     int result = system(command.toUtf8().constData());
 
-    // 根据编译结果显示消息
     if (result == 0) {
         QMessageBox::information(this, "编译", "编译成功！生成的可执行文件为:\n" + executableFile);
     } else {
@@ -223,19 +274,18 @@ void MainWindow::on_compile()
     }
 }
 
-// 运行程序的槽函数
+// *** 替换后的运行程序的槽函数 ***
 void MainWindow::on_run()
 {
-    // 检查当前文件是否已保存
     if (filename.isEmpty()) {
-        QMessageBox::warning(this, "警告", "请先编译文件再运行。");
+        QMessageBox::warning(this, "警告", "请先编译或保存文件再运行。");
         return;
     }
 
     // 构建可执行文件的名称和路径 (与编译时逻辑一致)
     QFileInfo fileInfo(filename);
     QString baseName = fileInfo.completeBaseName();
-    QString executablePath = fileInfo.absolutePath(); // 可执行文件所在的目录
+    QString executablePath = fileInfo.absolutePath();
     QString executableFile = executablePath + QDir::separator() + baseName;
 
 #ifdef Q_OS_WIN
@@ -255,20 +305,36 @@ void MainWindow::on_run()
 #ifdef Q_OS_WIN
     // 对于 Windows，我们通过命令行运行程序，并在其后加上 " & pause"
     // 并且在执行程序前设置控制台为 UTF-8 编码
-    // 注意：这里已经包含了 chcp 65001 的逻辑
     commandToExecute = "cmd /c \"chcp 65001 > nul && \"" + executableFile + "\" & pause\"";
     result = system(commandToExecute.toUtf8().constData());
 #else
     // 对于 Linux/macOS，直接运行可执行文件。
-    // 在这些系统上，通常终端不会在程序结束后立即关闭。
     commandToExecute = executableFile;
     result = system(commandToExecute.toUtf8().constData());
 #endif
 
-    // 根据运行结果显示消息
     if (result == 0) {
         QMessageBox::information(this, "运行", "程序运行完成。");
     } else {
         QMessageBox::critical(this, "运行", "程序运行失败或异常终止。");
+    }
+}
+
+// *** 新增的编译并运行代码的槽函数 ***
+void MainWindow::on_compileAndRun()
+{
+    on_compile(); // 调用编译函数
+    // 只有当编译成功后才尝试运行
+    QFileInfo fileInfo(filename);
+    QString baseName = fileInfo.completeBaseName();
+    QString executableFile = fileInfo.absolutePath() + QDir::separator() + baseName;
+#ifdef Q_OS_WIN
+    executableFile += ".exe";
+#endif
+
+    if (QFile::exists(executableFile)) {
+        on_run(); // 调用运行函数
+    } else {
+        QMessageBox::warning(this, "编译并运行", "编译失败，无法运行。");
     }
 }
