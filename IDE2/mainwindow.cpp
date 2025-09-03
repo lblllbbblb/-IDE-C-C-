@@ -247,20 +247,20 @@ void MainWindow::on_run()
 
     QMessageBox::information(this, "提示", "运行文件: " + executableFile);
 
-    // --- 修改部分开始 ---
     int result;
+    QString commandToExecute;
 #ifdef Q_OS_WIN
     // 对于 Windows，我们通过命令行运行程序，并在其后加上 " & pause"
-    // 这样程序执行完毕后，命令行窗口会显示 "请按任意键继续..."
-    // 使用 cmd /c 确保命令执行后窗口可以自动关闭（在用户按键后）
-    QString commandToExecute = "cmd /c \"" + executableFile + " & pause\"";
+    // 并且在执行程序前设置控制台为 UTF-8 编码
+    // 注意：这里已经包含了 chcp 65001 的逻辑
+    commandToExecute = "cmd /c \"chcp 65001 > nul && \"" + executableFile + "\" & pause\"";
     result = system(commandToExecute.toUtf8().constData());
 #else
     // 对于 Linux/macOS，直接运行可执行文件。
     // 在这些系统上，通常终端不会在程序结束后立即关闭。
-    result = system(executableFile.toUtf8().constData());
+    commandToExecute = executableFile;
+    result = system(commandToExecute.toUtf8().constData());
 #endif
-    // --- 修改部分结束 ---
 
     // 根据运行结果显示消息
     if (result == 0) {
