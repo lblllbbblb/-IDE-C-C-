@@ -11,6 +11,8 @@
 #include <QFileInfo>   // For getting file information (like base name)
 #include <QDir>        // For getting current directory
 
+#include "cpphighlighter.h" // 包含头文件
+
 // 引入 C 标准库，用于文件操作（fopen, fclose, fputs, fgets, feof）
 #include <cstdio>
 
@@ -64,6 +66,8 @@ private:
 
     QAction *build_compile;     // “构建”->“编译”动作
     QAction *build_run;         // “构建”->“运行”动作
+
+    CppHighlighter *cppHighlighter; // 声明高亮器指针
 };
 
 #endif // MAINWINDOW_H

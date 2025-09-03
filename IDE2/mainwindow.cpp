@@ -15,6 +15,9 @@ MainWindow::MainWindow(QWidget *parent)
     text1->setFont(f);
     this->setCentralWidget(text1); // 将 QTextEdit 设置为中心部件
 
+    // 在 codeEditor 创建后，初始化语法高亮器
+    cppHighlighter = new CppHighlighter(text1->document()); // 将高亮器关联到 codeEditor 的文档
+
     // —— 创建菜单栏上的主菜单 ——
     file = this->menuBar()->addMenu("文件"); // “文件”菜单
     edit = this->menuBar()->addMenu("编辑"); // “编辑”菜单
