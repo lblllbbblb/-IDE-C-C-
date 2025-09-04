@@ -13,6 +13,7 @@
 
 #include "cpphighlighter.h"
 #include "findreplacedialog.h" // 包含查找替换对话框的头文件
+#include "bracketmatcher.h"   // 新增：包含括号匹配器的头文件
 
 // 引入 C 标准库，用于文件操作（fopen, fclose, fputs, fgets, feof）
 #include <cstdio>
@@ -74,6 +75,7 @@ private:
 
     CppHighlighter *cppHighlighter;
     FindReplaceDialog *m_findReplaceDialog; // 声明查找替换对话框指针
+    BracketMatcher *m_bracketMatcher;     // 新增：声明括号匹配器指针
 };
 
 #endif // MAINWINDOW_H

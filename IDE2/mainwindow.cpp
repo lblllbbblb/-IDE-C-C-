@@ -19,6 +19,9 @@ MainWindow::MainWindow(QWidget *parent)
     // 初始化查找替换对话框，并传递 text1 指针
     m_findReplaceDialog = new FindReplaceDialog(text1, this);
 
+    // 新增：初始化括号匹配器，并将其安装到 text1 上
+    m_bracketMatcher = new BracketMatcher(text1, this); // 将 text1 和 this 作为父对象
+
     // —— 创建菜单栏上的主菜单 ——
     file = this->menuBar()->addMenu("文件");
     edit = this->menuBar()->addMenu("编辑");
