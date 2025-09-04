@@ -1,101 +1,115 @@
 #include "mainwindow.h"
-#include "./ui_mainwindow.h" // 包含由 Qt Designer 生成的 UI 头文件
+#include "./ui_mainwindow.h"
 
 // MainWindow 类的构造函数
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent) // 调用 QMainWindow 的构造函数
-    , ui(new Ui::MainWindow) // 初始化 UI 对象
+    : QMainWindow(parent)
+    , ui(new Ui::MainWindow)
 {
-    ui->setupUi(this); // 设置由 Qt Designer 生成的界面
+    ui->setupUi(this);
 
-    // 创建并设置文本编辑组件
     text1 = new QTextEdit;
     QFont f;
-    f.setPixelSize(18); // 设置字体大小为18像素
+    f.setPixelSize(18);
     text1->setFont(f);
-    this->setCentralWidget(text1); // 将 QTextEdit 设置为中心部件
+    this->setCentralWidget(text1);
 
-    // 在 codeEditor 创建后，初始化语法高亮器
-    cppHighlighter = new CppHighlighter(text1->document()); // 将高亮器关联到 codeEditor 的文档
+    cppHighlighter = new CppHighlighter(text1->document());
+
+    // 初始化查找替换对话框，并传递 text1 指针
+    m_findReplaceDialog = new FindReplaceDialog(text1, this);
 
     // —— 创建菜单栏上的主菜单 ——
-    file = this->menuBar()->addMenu("文件"); // “文件”菜单
-    edit = this->menuBar()->addMenu("编辑"); // “编辑”菜单
-    build =this->menuBar()->addMenu("构建"); // “构建”菜单
-    help = this->menuBar()->addMenu("帮助"); // “帮助”菜单
+    file = this->menuBar()->addMenu("文件");
+    edit = this->menuBar()->addMenu("编辑");
+    build =this->menuBar()->addMenu("构建");
+    help = this->menuBar()->addMenu("帮助");
 
     // —— 文件菜单动作 ——
     file_open = new QAction("打开", this);
-    file_open->setShortcut(tr("Ctrl+O")); // 设置打开的快捷键 Ctrl+O
+    file_open->setShortcut(tr("Ctrl+O"));
 
     file_save = new QAction("保存", this);
-    file_save->setShortcut(tr("Ctrl+S")); // 设置另存的快捷键 Ctrl+S
+    file_save->setShortcut(tr("Ctrl+S"));
 
-    file_anothersave = new QAction("另存", this);
-    file_anothersave->setShortcut(tr("Ctrl+Shift+s")); // 设置另存的快捷键 Ctrl+Shift+S
+    file_anothersave = new QAction("另存为", this); // 更改为“另存为”更符合语义
+    file_anothersave->setShortcut(tr("Ctrl+Shift+S")); // 快捷键保持不变
 
     file_exit = new QAction("退出", this);
 
-    file->addAction(file_open);  // 添加“打开”动作
-    file->addAction(file_save);  // 添加“保存”动作
-    file->addAction(file_anothersave);  // 添加“另存”动作
-    file->addSeparator();        // 添加分隔符
-    file->addAction(file_exit);  // 添加“退出”动作
+    file->addAction(file_open);
+    file->addAction(file_save);
+    file->addAction(file_anothersave);
+    file->addSeparator();
+    file->addAction(file_exit);
 
     // —— 构建菜单动作 ——
     build_compile = new QAction("编译",this);
-    build->addAction(build_compile); // 添加“编译”动作
+    build->addAction(build_compile);
 
     build_run = new QAction("运行",this);
-    build->addAction(build_run);     // 添加“运行”动作
+    build->addAction(build_run);
 
-    build_compileAndRun = new QAction("编译并运行", this); // 新增动作
-    build->addAction(build_compileAndRun); // 添加“编译并运行”动作
+    build_compileAndRun = new QAction("编译并运行", this);
+    build->addAction(build_compileAndRun);
 
     // —— 编辑菜单动作 ——
-    QAction *copy_act = new QAction("复制", this);
-    copy_act->setShortcut(tr("Ctrl+C")); // 设置复制的快捷键 Ctrl+C
+    edit_copy = new QAction("复制", this);
+    edit_copy->setShortcut(tr("Ctrl+C"));
 
-    QAction *paste_act = new QAction("粘贴", this);
-    paste_act->setShortcut(tr("Ctrl+V")); // 设置粘贴的快捷键 Ctrl+V
+    edit_paste = new QAction("粘贴", this);
+    edit_paste->setShortcut(tr("Ctrl+V"));
 
-    QAction *cut_act = new QAction("剪切", this);
-    cut_act->setShortcut(tr("Ctrl+X"));   // 设置剪切的快捷键 Ctrl+X
+    edit_cut = new QAction("剪切", this);
+    edit_cut->setShortcut(tr("Ctrl+X"));
 
-    QAction *selectAll_act = new QAction("全选", this);
-    selectAll_act->setShortcut(tr("Ctrl+A")); // 设置全选的快捷键 Ctrl+A
+    edit_selectAll = new QAction("全选", this);
+    edit_selectAll->setShortcut(tr("Ctrl+A"));
 
-    edit->addAction(copy_act);       // 添加“复制”动作
-    edit->addAction(cut_act);        // 添加“剪切”动作
-    edit->addAction(paste_act);      // 添加“粘贴”动作
-    edit->addAction(selectAll_act);  // 添加“全选”动作
+    edit_findReplace = new QAction("查找/替换", this); // 新增查找替换动作
+    edit_findReplace->setShortcut(tr("Ctrl+F"));     // 设置查找快捷键 Ctrl+F
+
+    edit->addAction(edit_copy);
+    edit->addAction(edit_cut);
+    edit->addAction(edit_paste);
+    edit->addSeparator(); // 分隔符
+    edit->addAction(edit_selectAll);
+    edit->addSeparator(); // 分隔符
+    edit->addAction(edit_findReplace); // 添加查找替换动作
 
     // —— 帮助菜单动作 ——
-    QAction *help_about = new QAction("关于", this);
-    help->addAction(help_about);     // 添加“关于”动作
+    help_about = new QAction("关于", this);
+    help->addAction(help_about);
 
     // —— 动作与槽函数关联（连接信号与槽） ——
-    connect(file_open, &QAction::triggered, this, &MainWindow::on_open);       // 连接“打开”动作到 on_open 槽
-    connect(file_save, &QAction::triggered, this, &MainWindow::on_save);       // 连接“保存”动作到 on_save 槽
-    connect(file_anothersave, &QAction::triggered, this, &MainWindow::on_anothersave);       // 连接“另存”动作到 on_anothersave 槽
-    connect(file_exit, &QAction::triggered, this, &MainWindow::close);         // 连接“退出”动作到 close 槽 (关闭窗口)
+    connect(file_open, &QAction::triggered, this, &MainWindow::on_open);
+    connect(file_save, &QAction::triggered, this, &MainWindow::on_save);
+    connect(file_anothersave, &QAction::triggered, this, &MainWindow::on_anothersave);
+    connect(file_exit, &QAction::triggered, this, &MainWindow::close);
 
-    connect(copy_act, &QAction::triggered, this, &MainWindow::on_copy);        // 连接“复制”动作到 on_copy 槽
-    connect(paste_act, &QAction::triggered, this, &MainWindow::on_paste);      // 连接“粘贴”动作到 on_paste 槽
-    connect(cut_act, &QAction::triggered, this, &MainWindow::on_cut);          // 连接“剪切”动作到 on_cut 槽
-    connect(selectAll_act, &QAction::triggered, this, &MainWindow::on_selectAll); // 连接“全选”动作到 on_selectAll 槽
-    connect(help_about, &QAction::triggered, this, &MainWindow::on_about);    // 连接“关于”动作到 on_about 槽
+    connect(edit_copy, &QAction::triggered, this, &MainWindow::on_copy);
+    connect(edit_paste, &QAction::triggered, this, &MainWindow::on_paste);
+    connect(edit_cut, &QAction::triggered, this, &MainWindow::on_cut);
+    connect(edit_selectAll, &QAction::triggered, this, &MainWindow::on_selectAll);
+    connect(edit_findReplace, &QAction::triggered, this, &MainWindow::on_findReplace); // 连接查找替换动作
 
-    connect(build_compile, &QAction::triggered, this, &MainWindow::on_compile); // 连接“编译”动作到 on_compile 槽
-    connect(build_run, &QAction::triggered, this, &MainWindow::on_run);         // 连接“运行”动作到 on_run 槽
-    connect(build_compileAndRun, &QAction::triggered, this, &MainWindow::on_compileAndRun); // 连接“编译并运行”动作到 on_compileAndRun 槽
+    connect(help_about, &QAction::triggered, this, &MainWindow::on_about);
+
+    connect(build_compile, &QAction::triggered, this, &MainWindow::on_compile);
+    connect(build_run, &QAction::triggered, this, &MainWindow::on_run);
+    connect(build_compileAndRun, &QAction::triggered, this, &MainWindow::on_compileAndRun);
 }
 
 // MainWindow 类的析构函数
 MainWindow::~MainWindow()
 {
-    delete text1; // 释放 QTextEdit 对象
-    delete ui;    // 释放 UI 对象
+    // text1 和 m_findReplaceDialog 会被父对象(MainWindow)自动删除，因为它们都指定了父对象。
+    // 但是 text1 在构造函数中被 this->setCentralWidget(text1); 设为中心部件，
+    // Qt 会负责它的生命周期。m_findReplaceDialog 也指定了 this 作为父对象。
+    // 理论上不需要手动 delete。
+    // 为了安全起见，显式 delete 也是可以的，但要注意避免双重删除。
+    // 这里保持 Qt 的父子关系管理原则，不显式删除。
+    delete ui; // ui 是一个裸指针，必须手动删除
 }
 
 // —— 槽函数实现 ——
@@ -103,18 +117,11 @@ MainWindow::~MainWindow()
 // 打开文件的槽函数
 void MainWindow::on_open()
 {
-    // 弹出文件对话框，让用户选择要打开的文件
-    // 参数1: 父窗口
-    // 参数2: 对话框标题
-    // 参数3: 默认打开路径 (QString() 表示当前目录)
-    // 参数4: 文件过滤器 ("Text Files (*.txt);;All Files (*)" 表示可以筛选 .txt 文件和所有文件)
     filename = QFileDialog::getOpenFileName(this, "打开文件", QString(), "C/C++ Files (*.c *.cpp *.h);;Text Files (*.txt);;All Files (*)");
     if (filename.isEmpty()) {
-        return; // 如果用户取消选择，则返回
+        return;
     }
 
-    // 使用 C 标准库的 fopen 打开文件
-    // filename.toUtf8().data() 将 QString 转换为 UTF-8 编码的 C 字符串
     FILE *p = fopen(filename.toUtf8().data(), "r");
     if (p == NULL)
     {
@@ -122,81 +129,68 @@ void MainWindow::on_open()
         return;
     }
 
-    text1->clear(); // 清空文本编辑框原有内容
-    char buf[1024]; // 定义缓冲区用于读取文件
-    // 循环读取文件直到文件结束
+    text1->clear();
+    char buf[1024];
     while (!feof(p))
     {
-        // 每次读取一行内容到缓冲区
         if (fgets(buf, sizeof(buf), p) != NULL) {
-            // 将读取的内容（UTF-8 编码）追加到文本编辑框
             text1->append(QString::fromUtf8(buf));
         }
     }
-    fclose(p); // 关闭文件
+    fclose(p);
 }
 
 void MainWindow::on_save()
 {
     if(filename.isEmpty()){
-        // 弹出文件对话框，让用户选择保存文件的位置和名称
         filename = QFileDialog::getSaveFileName(this, "保存文件", QString(), "C/C++ Files (*.c *.cpp *.h);;Text Files (*.txt);;All Files (*)");
         if(filename.isEmpty()){
-            return; // 如果用户取消选择，则返回
+            return;
         }
 
-        // 使用 C 标准库的 fopen 以写入模式打开文件
         FILE *p = fopen(filename.toUtf8().data(),"w");
         if(p == NULL){
             QMessageBox::information(this,"错误","保存文件失败");
-            return; // 如果文件打开失败，则返回
+            return;
         } else {
-            // 获取 QTextEdit 中的纯文本内容，并转换为 UTF-8 编码的 QByteArray
             QByteArray textData = text1->toPlainText().toUtf8();
-            // 将文本数据写入文件
             fputs(textData.constData(), p);
-            fclose(p); // 关闭文件
+            fclose(p);
             QMessageBox::information(this, "成功", "文件保存成功");
         }
-        return; // 如果用户首次建立文件，则新建一个文件
+        return;
     }
 
-    // 使用 C 标准库的 fopen 以写入模式打开文件
     FILE *p = fopen(filename.toUtf8().data(),"w");
     if(p == NULL){
         QMessageBox::information(this,"错误","保存文件失败");
-        return; // 如果文件打开失败，则返回
+        return;
     } else {
-        // 获取 QTextEdit 中的纯文本内容，并转换为 UTF-8 编码的 QByteArray
         QByteArray textData = text1->toPlainText().toUtf8();
-        // 将文本数据写入文件
         fputs(textData.constData(), p);
-        fclose(p); // 关闭文件
+        fclose(p);
         QMessageBox::information(this, "成功", "文件保存成功");
-    } // 如果用户不是首次建立文件，则保存到原来文件
+    }
 }
 
-// 保存文件的槽函数
-void MainWindow::on_anothersave() // 对应你提供的 on_othersave
+// 另存为文件的槽函数
+void MainWindow::on_anothersave()
 {
-    // 弹出文件对话框，让用户选择保存文件的位置和名称
-    filename = QFileDialog::getSaveFileName(this, "保存文件", QString(), "C/C++ Files (*.c *.cpp *.h);;Text Files (*.txt);;All Files (*)");
-    if(filename.isEmpty()){
-        return; // 如果用户取消选择，则返回
+    QString tempFilename = QFileDialog::getSaveFileName(this, "另存为文件", QString(), "C/C++ Files (*.c *.cpp *.h);;Text Files (*.txt);;All Files (*)");
+    if(tempFilename.isEmpty()){
+        return;
     }
 
-    // 使用 C 标准库的 fopen 以写入模式打开文件
-    FILE *p = fopen(filename.toUtf8().data(),"w");
+    FILE *p = fopen(tempFilename.toUtf8().data(),"w");
     if(p == NULL){
         QMessageBox::information(this,"错误","保存文件失败");
-        return; // 如果文件打开失败，则返回
+        return;
     } else {
-        // 获取 QTextEdit 中的纯文本内容，并转换为 UTF-8 编码的 QByteArray
         QByteArray textData = text1->toPlainText().toUtf8();
-        // 将文本数据写入文件
         fputs(textData.constData(), p);
-        fclose(p); // 关闭文件
-        QMessageBox::information(this, "成功", "文件保存成功");
+        fclose(p);
+        filename = tempFilename; // 更新当前文件名，以便后续保存操作
+        QMessageBox::information(this, "成功", "文件已另存成功");
     }
 }
 
@@ -227,10 +221,22 @@ void MainWindow::on_selectAll()
 // 显示“关于”信息的槽函数
 void MainWindow::on_about()
 {
-    QMessageBox::information(this, "关于", "这是一个简单的C/C++文本编辑器，具有编译和运行功能。");
+    QMessageBox::information(this, "关于", "这是一个简单的C/C++文本编辑器，具有语法高亮、查找替换、编译和运行功能。");
 }
 
-// *** 替换后的编译代码的槽函数 ***
+// 显示查找替换对话框的槽函数
+void MainWindow::on_findReplace()
+{
+    // 如果对话框是第一次创建，或者被删除了，重新创建
+    if (!m_findReplaceDialog) {
+        m_findReplaceDialog = new FindReplaceDialog(text1, this);
+    }
+    m_findReplaceDialog->show(); // 显示非模态对话框
+    m_findReplaceDialog->raise(); // 将对话框带到前面
+    m_findReplaceDialog->activateWindow(); // 激活对话框窗口
+}
+
+// *** 编译代码的槽函数 ***
 void MainWindow::on_compile()
 {
     if (filename.isEmpty()) {
@@ -274,7 +280,7 @@ void MainWindow::on_compile()
     }
 }
 
-// *** 替换后的运行程序的槽函数 ***
+// *** 运行程序的槽函数 ***
 void MainWindow::on_run()
 {
     if (filename.isEmpty()) {
@@ -320,7 +326,7 @@ void MainWindow::on_run()
     }
 }
 
-// *** 新增的编译并运行代码的槽函数 ***
+// *** 编译并运行代码的槽函数 ***
 void MainWindow::on_compileAndRun()
 {
     on_compile(); // 调用编译函数
