@@ -125,76 +125,88 @@ void MainWindow::on_open()
         return;
     }
 
-    FILE *p = fopen(filename.toUtf8().data(), "r");
-    if (p == NULL)
-    {
-        QMessageBox::information(this, "错误", "打开文件失败");
+    QFile file(filename);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QMessageBox::information(this, "错误", "打开文件失败: " + file.errorString());
         return;
     }
 
     text1->clear();
-    char buf[1024];
-    while (!feof(p))
-    {
-        if (fgets(buf, sizeof(buf), p) != NULL) {
-            text1->append(QString::fromUtf8(buf));
-        }
+
+    QTextStream in(&file);
+    in.setEncoding(QStringConverter::Utf8); //
+
+    while (!in.atEnd()) {
+        QString line = in.readLine();
+        text1->insertPlainText(line + "\n");
     }
-    fclose(p);
+
+    file.close();
 }
 
 void MainWindow::on_save()
 {
     if(filename.isEmpty()){
+        // 弹出文件对话框选择保存位置
         filename = QFileDialog::getSaveFileName(this, "保存文件", QString(), "C/C++ Files (*.c *.cpp *.h);;Text Files (*.txt);;All Files (*)");
         if(filename.isEmpty()){
             return;
         }
+    }
 
-        FILE *p = fopen(filename.toUtf8().data(),"w");
-        if(p == NULL){
-            QMessageBox::information(this,"错误","保存文件失败");
-            return;
-        } else {
-            QByteArray textData = text1->toPlainText().toUtf8();
-            fputs(textData.constData(), p);
-            fclose(p);
-            QMessageBox::information(this, "成功", "文件保存成功");
-        }
+    // 使用Qt的QFile和QTextStream保存文件
+    QFile file(filename);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QMessageBox::information(this, "错误", "保存文件失败: " + file.errorString());
         return;
     }
 
-    FILE *p = fopen(filename.toUtf8().data(),"w");
-    if(p == NULL){
-        QMessageBox::information(this,"错误","保存文件失败");
-        return;
-    } else {
-        QByteArray textData = text1->toPlainText().toUtf8();
-        fputs(textData.constData(), p);
-        fclose(p);
-        QMessageBox::information(this, "成功", "文件保存成功");
-    }
+    QTextStream out(&file);
+    // 根据Qt版本设置编码
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    out.setEncoding(QStringConverter::Utf8);
+#else
+    out.setCodec("UTF-8");
+#endif
+
+    // 写入文本内容
+    out << text1->toPlainText();
+
+    // 关闭文件
+    file.close();
+    QMessageBox::information(this, "成功", "文件保存成功");
 }
 
-// 另存为文件的槽函数
 void MainWindow::on_anothersave()
 {
-    QString tempFilename = QFileDialog::getSaveFileName(this, "另存为文件", QString(), "C/C++ Files (*.c *.cpp *.h);;Text Files (*.txt);;All Files (*)");
-    if(tempFilename.isEmpty()){
+    // 弹出文件对话框选择保存位置（另存为）
+    QString saveName = QFileDialog::getSaveFileName(this, "保存文件", QString(), "C/C++ Files (*.c *.cpp *.h);;Text Files (*.txt);;All Files (*)");
+    if(saveName.isEmpty()){
+        return;
+    }
+    filename = saveName; // 更新文件名
+
+    // 使用Qt的QFile和QTextStream保存文件
+    QFile file(filename);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QMessageBox::information(this, "错误", "保存文件失败: " + file.errorString());
         return;
     }
 
-    FILE *p = fopen(tempFilename.toUtf8().data(),"w");
-    if(p == NULL){
-        QMessageBox::information(this,"错误","保存文件失败");
-        return;
-    } else {
-        QByteArray textData = text1->toPlainText().toUtf8();
-        fputs(textData.constData(), p);
-        fclose(p);
-        filename = tempFilename; // 更新当前文件名，以便后续保存操作
-        QMessageBox::information(this, "成功", "文件已另存成功");
-    }
+    QTextStream out(&file);
+    // 根据Qt版本设置编码
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    out.setEncoding(QStringConverter::Utf8);
+#else
+    out.setCodec("UTF-8");
+#endif
+
+    // 写入文本内容
+    out << text1->toPlainText();
+
+    // 关闭文件
+    file.close();
+    QMessageBox::information(this, "成功", "文件保存成功");
 }
 
 // 复制选中文本的槽函数
