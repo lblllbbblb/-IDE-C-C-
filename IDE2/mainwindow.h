@@ -10,6 +10,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QDir>
+#include<QInputDialog>
 
 #include "cpphighlighter.h"
 #include "findreplacedialog.h" // 包含查找替换对话框的头文件
@@ -45,6 +46,7 @@ private slots:
     void on_compileAndRun();
 
     void on_findReplace(); // 新增的槽函数，用于显示查找替换对话框
+    void on_fontsize();//设置字体大小
 
 private:
     Ui::MainWindow *ui;
@@ -55,6 +57,7 @@ private:
     QMenu *edit;
     QMenu *build;
     QMenu *help;
+    QMenu *settings;
 
     QAction *file_open;
     QAction *file_save;
@@ -71,7 +74,10 @@ private:
     QAction *build_run;
     QAction *build_compileAndRun;
 
+    QAction *settings_fontsize;//设置-设置字体大小
+
     QAction *help_about;    // 关于动作
+    int fontsize ;
 
     CppHighlighter *cppHighlighter;
     FindReplaceDialog *m_findReplaceDialog; // 声明查找替换对话框指针

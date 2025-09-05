@@ -10,7 +10,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     text1 = new QTextEdit;
     QFont f;
-    f.setPixelSize(18);
+    fontsize=18;
+    f.setPixelSize(fontsize);
     text1->setFont(f);
     this->setCentralWidget(text1);
 
@@ -27,6 +28,7 @@ MainWindow::MainWindow(QWidget *parent)
     edit = this->menuBar()->addMenu("编辑");
     build =this->menuBar()->addMenu("构建");
     help = this->menuBar()->addMenu("帮助");
+    settings=this->menuBar()->addMenu("设置");
 
     // —— 文件菜单动作 ——
     file_open = new QAction("打开", this);
@@ -83,6 +85,9 @@ MainWindow::MainWindow(QWidget *parent)
     // —— 帮助菜单动作 ——
     help_about = new QAction("关于", this);
     help->addAction(help_about);
+    // --设置菜单动作 --
+    settings_fontsize = new QAction("设置字体大小",this);
+    settings->addAction(settings_fontsize);
 
     // —— 动作与槽函数关联（连接信号与槽） ——
     connect(file_open, &QAction::triggered, this, &MainWindow::on_open);
@@ -101,6 +106,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(build_compile, &QAction::triggered, this, &MainWindow::on_compile);
     connect(build_run, &QAction::triggered, this, &MainWindow::on_run);
     connect(build_compileAndRun, &QAction::triggered, this, &MainWindow::on_compileAndRun);
+    connect(settings_fontsize, &QAction::triggered, this, &MainWindow::on_fontsize);
 }
 
 // MainWindow 类的析构函数
@@ -358,4 +364,23 @@ void MainWindow::on_compileAndRun()
     } else {
         QMessageBox::warning(this, "编译并运行", "编译失败，无法运行。");
     }
+}
+
+//修改字体大小的槽函数
+void MainWindow::on_fontsize()
+{
+    bool ok;
+    fontsize = QInputDialog::getInt(nullptr,"设置字体大小","请输入字体大小",fontsize,6,72,2,&ok);
+    if(ok)
+    {
+        QMessageBox::information(nullptr,"设置成功","设置已生效");
+    }
+    else
+    {
+        QMessageBox::information(nullptr,"取消","设置已取消");
+    }
+    QFont f;
+    f.setPixelSize(fontsize);
+    text1->setFont(f);
+    this->setCentralWidget(text1);
 }
