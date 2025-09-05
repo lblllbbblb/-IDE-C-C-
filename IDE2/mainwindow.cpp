@@ -10,7 +10,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     text1 = new QTextEdit;
     QFont f;
-    fontsize=18;
+    fontsize = 18;
     f.setPixelSize(fontsize);
     text1->setFont(f);
     this->setCentralWidget(text1);
@@ -21,14 +21,14 @@ MainWindow::MainWindow(QWidget *parent)
     m_findReplaceDialog = new FindReplaceDialog(text1, this);
 
     // 新增：初始化括号匹配器，并将其安装到 text1 上
-    m_bracketMatcher = new BracketMatcher(text1, this); // 将 text1 和 this 作为父对象
+    m_bracketMatcher = new BracketMatcher(text1, this);
 
     // —— 创建菜单栏上的主菜单 ——
     file = this->menuBar()->addMenu("文件");
     edit = this->menuBar()->addMenu("编辑");
-    build =this->menuBar()->addMenu("构建");
+    build = this->menuBar()->addMenu("构建");
     help = this->menuBar()->addMenu("帮助");
-    settings=this->menuBar()->addMenu("设置");
+    settings = this->menuBar()->addMenu("设置");
 
     // —— 文件菜单动作 ——
     file_open = new QAction("打开", this);
@@ -37,8 +37,8 @@ MainWindow::MainWindow(QWidget *parent)
     file_save = new QAction("保存", this);
     file_save->setShortcut(tr("Ctrl+S"));
 
-    file_anothersave = new QAction("另存为", this); // 更改为“另存为”更符合语义
-    file_anothersave->setShortcut(tr("Ctrl+Shift+S")); // 快捷键保持不变
+    file_anothersave = new QAction("另存为", this);
+    file_anothersave->setShortcut(tr("Ctrl+Shift+S"));
 
     file_exit = new QAction("退出", this);
 
@@ -49,10 +49,10 @@ MainWindow::MainWindow(QWidget *parent)
     file->addAction(file_exit);
 
     // —— 构建菜单动作 ——
-    build_compile = new QAction("编译",this);
+    build_compile = new QAction("编译", this);
     build->addAction(build_compile);
 
-    build_run = new QAction("运行",this);
+    build_run = new QAction("运行", this);
     build->addAction(build_run);
 
     build_compileAndRun = new QAction("编译并运行", this);
@@ -71,8 +71,19 @@ MainWindow::MainWindow(QWidget *parent)
     edit_selectAll = new QAction("全选", this);
     edit_selectAll->setShortcut(tr("Ctrl+A"));
 
-    edit_findReplace = new QAction("查找/替换", this); // 新增查找替换动作
-    edit_findReplace->setShortcut(tr("Ctrl+F"));     // 设置查找快捷键 Ctrl+F
+    edit_findReplace = new QAction("查找/替换", this);
+    edit_findReplace->setShortcut(tr("Ctrl+F"));
+
+    // --- 新增：撤销和恢复动作 ---
+    edit_undo = new QAction("撤销", this);
+    edit_undo->setShortcut(tr("Ctrl+Z")); // 撤销快捷键 Ctrl+Z
+    edit_redo = new QAction("恢复", this);
+    edit_redo->setShortcut(tr("Ctrl+Y")); // 恢复快捷键 Ctrl+Y (或 Ctrl+Shift+Z)
+
+    // 将撤销和恢复动作添加到编辑菜单的顶部
+    edit->addAction(edit_undo);
+    edit->addAction(edit_redo);
+    edit->addSeparator(); // 分隔符
 
     edit->addAction(edit_copy);
     edit->addAction(edit_cut);
@@ -80,13 +91,14 @@ MainWindow::MainWindow(QWidget *parent)
     edit->addSeparator(); // 分隔符
     edit->addAction(edit_selectAll);
     edit->addSeparator(); // 分隔符
-    edit->addAction(edit_findReplace); // 添加查找替换动作
+    edit->addAction(edit_findReplace);
 
     // —— 帮助菜单动作 ——
     help_about = new QAction("关于", this);
     help->addAction(help_about);
+
     // --设置菜单动作 --
-    settings_fontsize = new QAction("设置字体大小",this);
+    settings_fontsize = new QAction("设置字体大小", this);
     settings->addAction(settings_fontsize);
 
     // —— 动作与槽函数关联（连接信号与槽） ——
@@ -99,7 +111,11 @@ MainWindow::MainWindow(QWidget *parent)
     connect(edit_paste, &QAction::triggered, this, &MainWindow::on_paste);
     connect(edit_cut, &QAction::triggered, this, &MainWindow::on_cut);
     connect(edit_selectAll, &QAction::triggered, this, &MainWindow::on_selectAll);
-    connect(edit_findReplace, &QAction::triggered, this, &MainWindow::on_findReplace); // 连接查找替换动作
+    connect(edit_findReplace, &QAction::triggered, this, &MainWindow::on_findReplace);
+
+    // --- 新增：连接撤销和恢复动作到槽函数 ---
+    connect(edit_undo, &QAction::triggered, this, &MainWindow::on_undo);
+    connect(edit_redo, &QAction::triggered, this, &MainWindow::on_redo);
 
     connect(help_about, &QAction::triggered, this, &MainWindow::on_about);
 
@@ -112,13 +128,10 @@ MainWindow::MainWindow(QWidget *parent)
 // MainWindow 类的析构函数
 MainWindow::~MainWindow()
 {
-    // text1 和 m_findReplaceDialog 会被父对象(MainWindow)自动删除，因为它们都指定了父对象。
-    // 但是 text1 在构造函数中被 this->setCentralWidget(text1); 设为中心部件，
-    // Qt 会负责它的生命周期。m_findReplaceDialog 也指定了 this 作为父对象。
-    // 理论上不需要手动 delete。
-    // 为了安全起见，显式 delete 也是可以的，但要注意避免双重删除。
-    // 这里保持 Qt 的父子关系管理原则，不显式删除。
-    delete ui; // ui 是一个裸指针，必须手动删除
+    delete ui;
+    // Qt 会自动管理 text1, m_findReplaceDialog, m_bracketMatcher
+    // 因为它们都指定了父对象 (this)。
+    // 显式 delete 会导致双重释放，所以这里不手动删除。
 }
 
 // —— 槽函数实现 ——
@@ -140,7 +153,11 @@ void MainWindow::on_open()
     text1->clear();
 
     QTextStream in(&file);
-    in.setEncoding(QStringConverter::Utf8); //
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    in.setEncoding(QStringConverter::Utf8);
+#else
+    in.setCodec("UTF-8");
+#endif
 
     while (!in.atEnd()) {
         QString line = in.readLine();
@@ -152,10 +169,10 @@ void MainWindow::on_open()
 
 void MainWindow::on_save()
 {
-    if(filename.isEmpty()){
+    if (filename.isEmpty()) {
         // 弹出文件对话框选择保存位置
         filename = QFileDialog::getSaveFileName(this, "保存文件", QString(), "C/C++ Files (*.c *.cpp *.h);;Text Files (*.txt);;All Files (*)");
-        if(filename.isEmpty()){
+        if (filename.isEmpty()) {
             return;
         }
     }
@@ -168,7 +185,6 @@ void MainWindow::on_save()
     }
 
     QTextStream out(&file);
-    // 根据Qt版本设置编码
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     out.setEncoding(QStringConverter::Utf8);
 #else
@@ -187,7 +203,7 @@ void MainWindow::on_anothersave()
 {
     // 弹出文件对话框选择保存位置（另存为）
     QString saveName = QFileDialog::getSaveFileName(this, "保存文件", QString(), "C/C++ Files (*.c *.cpp *.h);;Text Files (*.txt);;All Files (*)");
-    if(saveName.isEmpty()){
+    if (saveName.isEmpty()) {
         return;
     }
     filename = saveName; // 更新文件名
@@ -200,7 +216,6 @@ void MainWindow::on_anothersave()
     }
 
     QTextStream out(&file);
-    // 根据Qt版本设置编码
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     out.setEncoding(QStringConverter::Utf8);
 #else
@@ -242,7 +257,7 @@ void MainWindow::on_selectAll()
 // 显示“关于”信息的槽函数
 void MainWindow::on_about()
 {
-    QMessageBox::information(this, "关于", "这是一个简单的C/C++文本编辑器，具有语法高亮、查找替换、编译和运行功能。");
+    QMessageBox::information(this, "关于", "这是一个简单的C/C++文本编辑器，具有语法高亮、查找替换、编译和运行功能，并支持撤销和恢复。");
 }
 
 // 显示查找替换对话框的槽函数
@@ -257,6 +272,18 @@ void MainWindow::on_findReplace()
     m_findReplaceDialog->activateWindow(); // 激活对话框窗口
 }
 
+// --- 新增：撤销操作的槽函数 ---
+void MainWindow::on_undo()
+{
+    text1->undo(); // 调用 QTextEdit 的内置 undo 槽
+}
+
+// --- 新增：恢复操作的槽函数 ---
+void MainWindow::on_redo()
+{
+    text1->redo(); // 调用 QTextEdit 的内置 redo 槽
+}
+
 // *** 编译代码的槽函数 ***
 void MainWindow::on_compile()
 {
@@ -268,9 +295,9 @@ void MainWindow::on_compile()
     }
 
     // 先保存当前文本到文件
-    FILE *p = fopen(filename.toUtf8().data(),"w");
-    if(p == NULL){
-        QMessageBox::information(this,"错误","保存文件失败");
+    FILE *p = fopen(filename.toUtf8().data(), "w");
+    if (p == NULL) {
+        QMessageBox::information(this, "错误", "保存文件失败");
         return;
     } else {
         QByteArray textData = text1->toPlainText().toUtf8();
@@ -370,17 +397,14 @@ void MainWindow::on_compileAndRun()
 void MainWindow::on_fontsize()
 {
     bool ok;
-    fontsize = QInputDialog::getInt(nullptr,"设置字体大小","请输入字体大小",fontsize,6,72,2,&ok);
-    if(ok)
-    {
-        QMessageBox::information(nullptr,"设置成功","设置已生效");
-    }
-    else
-    {
-        QMessageBox::information(nullptr,"取消","设置已取消");
+    fontsize = QInputDialog::getInt(nullptr, "设置字体大小", "请输入字体大小", fontsize, 6, 72, 2, &ok);
+    if (ok) {
+        QMessageBox::information(nullptr, "设置成功", "设置已生效");
+    } else {
+        QMessageBox::information(nullptr, "取消", "设置已取消");
     }
     QFont f;
     f.setPixelSize(fontsize);
     text1->setFont(f);
-    this->setCentralWidget(text1);
+    // this->setCentralWidget(text1); // 这一行不需要，text1 已经是中心部件
 }

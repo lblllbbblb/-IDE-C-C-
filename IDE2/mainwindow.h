@@ -10,14 +10,13 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QDir>
-#include<QInputDialog>
+#include <QInputDialog> // 确保包含 QInputDialog 头文件
 
 #include "cpphighlighter.h"
-#include "findreplacedialog.h" // 包含查找替换对话框的头文件
-#include "bracketmatcher.h"   // 新增：包含括号匹配器的头文件
+#include "findreplacedialog.h"
+#include "bracketmatcher.h"
 
-// 引入 C 标准库，用于文件操作（fopen, fclose, fputs, fgets, feof）
-#include <cstdio>
+#include <cstdio> // 引入 C 标准库，用于文件操作
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -45,8 +44,12 @@ private slots:
     void on_run();
     void on_compileAndRun();
 
-    void on_findReplace(); // 新增的槽函数，用于显示查找替换对话框
-    void on_fontsize();//设置字体大小
+    void on_findReplace();
+    void on_fontsize();
+
+    // --- 新增：撤销和恢复的槽函数 ---
+    void on_undo();
+    void on_redo();
 
 private:
     Ui::MainWindow *ui;
@@ -64,24 +67,27 @@ private:
     QAction *file_anothersave;
     QAction *file_exit;
 
-    QAction *edit_copy;     // 复制动作
-    QAction *edit_paste;    // 粘贴动作
-    QAction *edit_cut;      // 剪切动作
-    QAction *edit_selectAll;// 全选动作
-    QAction *edit_findReplace; // 新增的查找替换动作
+    QAction *edit_copy;
+    QAction *edit_paste;
+    QAction *edit_cut;
+    QAction *edit_selectAll;
+    QAction *edit_findReplace;
+    // --- 新增：撤销和恢复动作 ---
+    QAction *edit_undo;
+    QAction *edit_redo;
 
     QAction *build_compile;
     QAction *build_run;
     QAction *build_compileAndRun;
 
-    QAction *settings_fontsize;//设置-设置字体大小
+    QAction *settings_fontsize;
 
-    QAction *help_about;    // 关于动作
-    int fontsize ;
+    QAction *help_about;
+    int fontsize;
 
     CppHighlighter *cppHighlighter;
-    FindReplaceDialog *m_findReplaceDialog; // 声明查找替换对话框指针
-    BracketMatcher *m_bracketMatcher;     // 新增：声明括号匹配器指针
+    FindReplaceDialog *m_findReplaceDialog;
+    BracketMatcher *m_bracketMatcher;
 };
 
 #endif // MAINWINDOW_H
