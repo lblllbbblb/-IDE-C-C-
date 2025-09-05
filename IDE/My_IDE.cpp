@@ -237,14 +237,14 @@ void My_IDE::on_selectAll()
 
 void My_IDE::on_compile()
 {
+    // 如果文件名为空，则先进行另存为操作
     if (filename.isEmpty()) {
-
         on_othersave();
         return;
     }
 
-
     // 使用 C 标准库的 fopen 以写入模式打开文件
+    // 注意：这里仍然使用 C 风格的文件操作，确保文本内容能正确写入
     FILE *p = fopen(filename.toUtf8().data(),"w");
     if(p == NULL){
         QMessageBox::information(this,"错误","保存文件失败");
@@ -256,20 +256,37 @@ void My_IDE::on_compile()
         fputs(textData.constData(), p);
         fclose(p); // 关闭文件
     }
-    //先实现保存
+    // 先实现保存功能
 
-
+    // 构建目标可执行文件的名称，将 .c 替换为 .exe
     QString destname = filename;
     destname.replace(".c",".exe");
-    QString command = "gcc -o " + destname + " "+ filename;
+
+    // 构建 g++ 编译命令
+    // -o 指定输出文件名
+    // -finput-charset=UTF-8 告诉 g++ 源文件是 UTF-8 编码
+    // -fexec-charset=UTF-8 告诉 g++ 生成的可执行文件运行时使用 UTF-8 编码
+    QString command = "g++ -o " + destname + " " + filename + " -finput-charset=UTF-8 -fexec-charset=UTF-8";
+
+    // 执行编译命令
     system(command.toStdString().data());
 }
 
 void My_IDE::on_run()
 {
+    // 构建目标可执行文件的名称
     QString destname = filename;
     destname.replace(".c",".exe");
-    system(destname.toStdString().data());
+
+    // 构建运行命令
+    // cmd /c "chcp 65001 > nul && " + executableFile + " & pause"
+    // chcp 65001 设置控制台代码页为 UTF-8，> nul 避免输出 chcp 的信息
+    // && 连接命令，确保 chcp 成功后才运行程序
+    // & pause 使程序执行完毕后暂停，方便查看输出
+    QString commandToExecute = "cmd /c \"chcp 65001 > nul && \"" + destname + "\" & pause\"";
+
+    // 执行运行命令
+    system(commandToExecute.toStdString().data());
 }
 
 void My_IDE::on_compileAndRun(){
