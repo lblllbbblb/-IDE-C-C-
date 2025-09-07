@@ -33,6 +33,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         bracketmatcher.cpp
         findreplacedialog.h
         findreplacedialog.cpp
+        tabwidgetmanager.h tabwidgetmanager.cpp
 
 
 

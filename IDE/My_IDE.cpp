@@ -4,55 +4,64 @@
 #include <QAction>
 #include <QVBoxLayout>
 #include <QStatusBar>
+#include <QFileInfo> // 用于获取文件名
 
 My_IDE::My_IDE(QMainWindow *parent)
     : QMainWindow(parent)
 {
-    // 创建主编辑器（替换原来的text1）
-    text1 = new CodeEditor(this);
-    setCentralWidget(text1);  // 设置为中心部件
+    // 创建 QTabWidget 作为中心部件
+    m_tabWidget = new QTabWidget(this);
+    setCentralWidget(m_tabWidget);
 
-    // 设置编辑器属性
-    text1->setFont(QFont("Consolas", 12));
-    text1->setLineWrapMode(QPlainTextEdit::NoWrap);
+    // 初始化 TabWidgetManager
+    m_tabManager = new TabWidgetManager(m_tabWidget, this);
 
-    // 初始化语法高亮器（关联到编辑器文档）
-    cppHighlighter = new CppHighlighter(text1->document());
+    // 默认创建一个新文件
+    m_tabManager->newFile();
+
+    // 连接 TabManager 的信号，用于更新状态栏和动作状态
+    connect(m_tabManager, &TabWidgetManager::currentEditorChanged, this, &My_IDE::on_currentEditorChanged);
 
     // 创建状态栏
     QStatusBar *statusBar = new QStatusBar;
     setStatusBar(statusBar);
 
-    // 连接光标位置变化信号
-    connect(text1, &QPlainTextEdit::cursorPositionChanged, [=](){
-        int line = text1->textCursor().blockNumber() + 1;
-        statusBar->showMessage(QString("当前行: %1").arg(line));
-    });
-    // 新增：初始化括号匹配器，并将其安装到 text1 上
-    m_bracketMatcher = new BracketMatcher(text1, this); // 将 text1 和 this 作为父对象
-
-    m_findReplaceDialog = new FindReplaceDialog(text1, this);
+    // 连接光标位置变化信号 (连接到 TabManager 发出的当前编辑器的信号)
+    // 确保在 on_currentEditorChanged 中连接此信号，因为编辑器会动态变化
 
     // 初始化菜单系统
     initMenuSystem();
+
+    // 设置初始字体大小
+    fontsize = 12; // 默认字体大小
+    m_tabManager->setFontSize(fontsize);
+
+    // 初始状态更新，以防第一个Tab没有触发信号
+    on_currentEditorChanged(m_tabManager->currentEditor());
 }
 
 void My_IDE::initMenuSystem()
 {
     // 文件菜单
     file = menuBar()->addMenu("文件");
+    file_new = new QAction("新建", this); // 新增新建文件动作
     file_open = new QAction("打开", this);
     file_save = new QAction("保存", this);
     file_othersave = new QAction("另存为", this);
+    file_closeTab = new QAction("关闭当前文件", this); // 新增关闭 Tab 动作
     file_exit = new QAction("退出", this);
 
     // 添加快捷键
+    file_new->setShortcut(tr("Ctrl+N"));
     file_open->setShortcut(tr("Ctrl+O"));
     file_save->setShortcut(tr("Ctrl+S"));
     file_othersave->setShortcut(tr("Ctrl+Shift+S"));
+    file_closeTab->setShortcut(tr("Ctrl+W")); // 关闭 Tab 快捷键
 
     // 添加菜单项
-    file->addActions({file_open, file_save, file_othersave});
+    file->addActions({file_new, file_open, file_save, file_othersave});
+    file->addSeparator();
+    file->addAction(file_closeTab);
     file->addSeparator();
     file->addAction(file_exit);
 
@@ -63,16 +72,16 @@ void My_IDE::initMenuSystem()
     edit_cut = new QAction("剪切", this);
     edit_selectAll = new QAction("全选", this);
     edit->addActions({edit_selectAll, edit_copy, edit_paste, edit_cut});
-    edit_findReplace = new QAction("查找/替换", this); // 新增查找替换动作
-    edit_findReplace->setShortcut(tr("Ctrl+F"));     // 设置查找快捷键 Ctrl+F
+    edit_findReplace = new QAction("查找/替换", this);
+    edit_findReplace->setShortcut(tr("Ctrl+F"));
     edit->addAction(edit_findReplace);
     edit_undo = new QAction("撤销", this);
-    edit_undo->setShortcut(tr("Ctrl+Z")); // 撤销快捷键 Ctrl+Z
+    edit_undo->setShortcut(tr("Ctrl+Z"));
     edit_redo = new QAction("恢复", this);
-    edit_redo->setShortcut(tr("Ctrl+Y")); // 恢复快捷键 Ctrl+Y (或 Ctrl+Shift+Z)
+    edit_redo->setShortcut(tr("Ctrl+Y"));
     edit->addAction(edit_undo);
     edit->addAction(edit_redo);
-    edit->addSeparator(); // 分隔符
+    edit->addSeparator();
 
     // 构建菜单
     build = menuBar()->addMenu("构建");
@@ -90,9 +99,9 @@ void My_IDE::initMenuSystem()
     help_about->setShortcut(tr("Ctrl+H"));
     help->addAction(help_about);
 
-    //设置菜单
-    settings=this->menuBar()->addMenu("设置");
-    settings_fontsize = new QAction("设置字体大小",this);
+    // 设置菜单
+    settings = this->menuBar()->addMenu("设置");
+    settings_fontsize = new QAction("设置字体大小", this);
     settings->addAction(settings_fontsize);
 
     // 连接所有信号槽
@@ -102,248 +111,165 @@ void My_IDE::initMenuSystem()
 void My_IDE::connectActions()
 {
     // 文件操作
+    connect(file_new, &QAction::triggered, this, &My_IDE::on_new); // 连接新建文件动作
     connect(file_open, &QAction::triggered, this, &My_IDE::on_open);
     connect(file_save, &QAction::triggered, this, &My_IDE::on_save);
     connect(file_othersave, &QAction::triggered, this, &My_IDE::on_othersave);
+    connect(file_closeTab, &QAction::triggered, this, &My_IDE::on_closeTab); // 连接关闭 Tab 动作
     connect(file_exit, &QAction::triggered, this, &My_IDE::on_exit);
 
     // 编辑操作
-    connect(edit_copy, &QAction::triggered, text1, &QPlainTextEdit::copy);
-    connect(edit_paste, &QAction::triggered, text1, &QPlainTextEdit::paste);
-    connect(edit_cut, &QAction::triggered, text1, &QPlainTextEdit::cut);
-    connect(edit_selectAll, &QAction::triggered, text1, &QPlainTextEdit::selectAll);
+    connect(edit_copy, &QAction::triggered, this, &My_IDE::on_copy);
+    connect(edit_paste, &QAction::triggered, this, &My_IDE::on_paste);
+    connect(edit_cut, &QAction::triggered, this, &My_IDE::on_cut);
+    connect(edit_selectAll, &QAction::triggered, this, &My_IDE::on_selectAll);
     connect(edit_findReplace, &QAction::triggered, this, &My_IDE::on_findReplace);
 
     // 构建操作
     connect(build_compile, &QAction::triggered, this, &My_IDE::on_compile);
     connect(build_run, &QAction::triggered, this, &My_IDE::on_run);
     connect(build_compileAndRun, &QAction::triggered, this, &My_IDE::on_compileAndRun);
-    connect(build_compileAndRun, &QAction::triggered, this, &My_IDE::on_compileAndRun);
 
     // 帮助
     connect(help_about, &QAction::triggered, this, &My_IDE::on_about);
 
-    //设置
+    // 设置
     connect(settings_fontsize, &QAction::triggered, this, &My_IDE::on_fontsize);
 
     connect(edit_undo, &QAction::triggered, this, &My_IDE::on_undo);
     connect(edit_redo, &QAction::triggered, this, &My_IDE::on_redo);
 }
 
+void My_IDE::on_new()
+{
+    m_tabManager->newFile();
+}
 
 void My_IDE::on_open()
 {
-    filename = QFileDialog::getOpenFileName();//打开一个标准文件对话框，返回值是用户选定的文件名
-
-    if(filename.isEmpty()){
-        return;
-    }
-    //filename.toStdString().data();//QSrting转化为const char*
-    QString content;//Qt定义的字符串
-    FILE *p = fopen(filename.toStdString().data(),"r");
-    if(p == NULL){
-        QMessageBox::information(this,"错误","打开文件失败\n请检查路径是否正确");
-    }
-    else
-    {
-        while(!feof(p)){
-            char buf[1024] = { 0 };
-            fgets(buf,sizeof(buf),p);
-            content += buf;//将buf内容追加到content后面
-        }
-        fclose(p);
-        text1 -> setPlainText(content);//将QString字符串放入text1里面
+    QString selectedFilename = QFileDialog::getOpenFileName(this);
+    if (!selectedFilename.isEmpty()) {
+        m_tabManager->openFile(selectedFilename);
     }
 }
 
 void My_IDE::on_save()
 {
-    // 检查当前文件是否已保存
-    if (filename.isEmpty()) {
-
-        on_othersave();
-        return;
-    }
-
-
-    // 使用 C 标准库的 fopen 以写入模式打开文件
-    FILE *p = fopen(filename.toUtf8().data(),"w");
-    if(p == NULL){
-        QMessageBox::information(this,"错误","保存文件失败");
-        return; // 如果文件打开失败，则返回
-    } else {
-        // 获取 QTextEdit 中的纯文本内容，并转换为 UTF-8 编码的 QByteArray
-        QByteArray textData = text1->toPlainText().toUtf8();
-        // 将文本数据写入文件
-        fputs(textData.constData(), p);
-        fclose(p); // 关闭文件
-        QMessageBox::information(this, "成功", "文件保存成功");
-    }
+    m_tabManager->saveCurrentFile();
 }
 
 void My_IDE::on_othersave()
 {
-    // 弹出文件对话框，让用户选择保存文件的位置和名称
-    filename = QFileDialog::getSaveFileName(this, "保存文件", QString(), "C/C++ Files (*.c *.cpp *.h);;Text Files (*.txt);;All Files (*)");
-    if(filename.isEmpty()){
-        return; // 如果用户取消选择，则返回
-    }
-
-    // 使用 C 标准库的 fopen 以写入模式打开文件
-    FILE *p = fopen(filename.toUtf8().data(),"w");
-    if(p == NULL){
-        QMessageBox::information(this,"错误","保存文件失败");
-        return; // 如果文件打开失败，则返回
-    } else {
-        // 获取 QTextEdit 中的纯文本内容，并转换为 UTF-8 编码的 QByteArray
-        QByteArray textData = text1->toPlainText().toUtf8();
-        // 将文本数据写入文件
-        fputs(textData.constData(), p);
-        fclose(p); // 关闭文件
-        QMessageBox::information(this, "成功", "文件保存成功");
-    }
+    m_tabManager->saveCurrentFileAs();
 }
-
 
 void My_IDE::on_about()
 {
-    QMessageBox::information(this,"关于","版权所有");
+    QMessageBox::information(this, "关于", "版权所有");
 }
 
 void My_IDE::on_exit()
 {
+    // TODO: 退出前检查所有文件是否保存
     exit(0);
 }
 
 void My_IDE::on_copy()
 {
-    text1->copy();
+    m_tabManager->copy();
 }
 
 void My_IDE::on_paste()
 {
-    text1->paste();
+    m_tabManager->paste();
 }
 
 void My_IDE::on_cut()
 {
-    text1->cut();
+    m_tabManager->cut();
 }
 
 void My_IDE::on_selectAll()
 {
-    text1->selectAll();
+    m_tabManager->selectAll();
 }
 
 void My_IDE::on_compile()
 {
-    // 如果文件名为空，则先进行另存为操作
-    if (filename.isEmpty()) {
-        on_othersave();
-        return;
-    }
-
-    // 使用 C 标准库的 fopen 以写入模式打开文件
-    // 注意：这里仍然使用 C 风格的文件操作，确保文本内容能正确写入
-    FILE *p = fopen(filename.toUtf8().data(),"w");
-    if(p == NULL){
-        QMessageBox::information(this,"错误","保存文件失败");
-        return; // 如果文件打开失败，则返回
-    } else {
-        // 获取 QTextEdit 中的纯文本内容，并转换为 UTF-8 编码的 QByteArray
-        QByteArray textData = text1->toPlainText().toUtf8();
-        // 将文本数据写入文件
-        fputs(textData.constData(), p);
-        fclose(p); // 关闭文件
-    }
-    // 先实现保存功能
-
-    // 构建目标可执行文件的名称，将 .c 替换为 .exe
-    QString destname = filename;
-    destname.replace(".c",".exe");
-
-    // 构建 g++ 编译命令
-    // -o 指定输出文件名
-    // -finput-charset=UTF-8 告诉 g++ 源文件是 UTF-8 编码
-    // -fexec-charset=UTF-8 告诉 g++ 生成的可执行文件运行时使用 UTF-8 编码
-    QString command = "g++ -o " + destname + " " + filename + " -finput-charset=UTF-8 -fexec-charset=UTF-8";
-
-    // 执行编译命令
-    system(command.toStdString().data());
+    m_tabManager->compileCurrentFile();
 }
 
 void My_IDE::on_run()
 {
-    // 构建目标可执行文件的名称
-    QString destname = filename;
-    destname.replace(".c",".exe");
-
-    // 构建运行命令
-    // cmd /c "chcp 65001 > nul && " + executableFile + " & pause"
-    // chcp 65001 设置控制台代码页为 UTF-8，> nul 避免输出 chcp 的信息
-    // && 连接命令，确保 chcp 成功后才运行程序
-    // & pause 使程序执行完毕后暂停，方便查看输出
-    QString commandToExecute = "cmd /c \"chcp 65001 > nul && \"" + destname + "\" & pause\"";
-
-    // 执行运行命令
-    system(commandToExecute.toStdString().data());
+    m_tabManager->runCurrentFile();
 }
 
-void My_IDE::on_compileAndRun(){
-    on_compile();
-    on_run();
+void My_IDE::on_compileAndRun()
+{
+    m_tabManager->compileAndRunCurrentFile();
 }
-// 显示查找替换对话框的槽函数
+
 void My_IDE::on_findReplace()
 {
-    // 如果对话框是第一次创建，或者被删除了，重新创建
-    if (!m_findReplaceDialog) {
-        m_findReplaceDialog = new FindReplaceDialog(text1, this);
-    }
-    m_findReplaceDialog->show(); // 显示非模态对话框
-    m_findReplaceDialog->raise(); // 将对话框带到前面
-    m_findReplaceDialog->activateWindow(); // 激活对话框窗口
+    m_tabManager->showFindReplaceDialog();
 }
 
 void My_IDE::on_fontsize()
 {
     bool ok;
-    fontsize = QInputDialog::getInt(nullptr,"设置字体大小","请输入字体大小",fontsize,6,72,2,&ok);
-    if(ok)
-    {
-        QMessageBox::information(nullptr,"设置成功","设置已生效");
+    int newFontSize = QInputDialog::getInt(this, "设置字体大小", "请输入字体大小", fontsize, 6, 72, 2, &ok);
+    if (ok) {
+        fontsize = newFontSize;
+        m_tabManager->setFontSize(fontsize);
+        QMessageBox::information(this, "设置成功", "设置已生效");
+    } else {
+        QMessageBox::information(this, "取消", "设置已取消");
     }
-    else
-    {
-        QMessageBox::information(nullptr,"取消","设置已取消");
-    }
-    QFont f;
-    f.setPixelSize(fontsize);
-    text1->setFont(f);
-    this->setCentralWidget(text1);
 }
 
-// --- 新增：撤销操作的槽函数 ---
 void My_IDE::on_undo()
 {
-    text1->undo(); // 调用 QTextEdit 的内置 undo 槽
+    m_tabManager->undo();
 }
 
-// --- 新增：恢复操作的槽函数 ---
 void My_IDE::on_redo()
 {
-    text1->redo(); // 调用 QTextEdit 的内置 redo 槽
+    m_tabManager->redo();
 }
 
+void My_IDE::on_closeTab()
+{
+    m_tabManager->closeCurrentTab();
+}
 
+void My_IDE::on_currentEditorChanged(CodeEditor *editor)
+{
+    // 断开旧的连接，连接新的编辑器光标信号
+    static QMetaObject::Connection connection;
+    if (connection) {
+        disconnect(connection);
+    }
 
-
-
-
+    if (editor) {
+        connection = connect(editor, &QPlainTextEdit::cursorPositionChanged, [=]() {
+            int line = editor->textCursor().blockNumber() + 1;
+            int col = editor->textCursor().columnNumber() + 1;
+            statusBar()->showMessage(QString("行: %1, 列: %2").arg(line).arg(col));
+        });
+        // 更新窗口标题
+        QString filePath = m_tabManager->getCurrentFilePath();
+        if (!filePath.isEmpty()) {
+            setWindowTitle("My IDE - " + QFileInfo(filePath).fileName());
+        } else {
+            setWindowTitle("My IDE - " + m_tabWidget->tabText(m_tabWidget->currentIndex()));
+        }
+    } else {
+        statusBar()->showMessage("没有打开的文件");
+        setWindowTitle("My IDE");
+    }
+}
 
 My_IDE::~My_IDE()
 {
-    // 自动管理Qt对象，无需手动删除
+    // m_tabWidget 和 m_tabManager 会自动被删除，因为它们有父对象
 }
-//修改字体大小的槽函数
-
