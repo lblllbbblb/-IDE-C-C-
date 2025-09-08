@@ -1,4 +1,5 @@
-# 北理大二电信小学期-C/C++语言IDE项目
+# 北理大二电信小学期-C/C++语言IDE项目  
+Beijing Institute of Technology Sophomore Electronic Information Engineering Major Summer Session C/C++ IDE Project
 
 版本介绍:
 北理工电信大二小学期
