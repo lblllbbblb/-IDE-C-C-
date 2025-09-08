@@ -14,6 +14,7 @@
 // #include "bracketmatcher.h"
 // #include "findreplacedialog.h"
 #include "TabWidgetManager.h" // 新增：包含 TabWidgetManager 头文件
+#include <QWheelEvent> // 新增：包含 QWheelEvent 头文件
 
 class My_IDE : public QMainWindow
 {
@@ -63,6 +64,9 @@ private:
 
     void initMenuSystem();
     void connectActions();
+
+protected:
+    void wheelEvent(QWheelEvent *event) override; // 重写滚轮事件
 
 public:
     My_IDE(QMainWindow *parent = nullptr);

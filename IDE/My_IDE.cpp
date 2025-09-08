@@ -5,6 +5,7 @@
 #include <QVBoxLayout>
 #include <QStatusBar>
 #include <QFileInfo> // 用于获取文件名
+#include <QInputDialog> // 用于 QInputDialog
 
 My_IDE::My_IDE(QMainWindow *parent)
     : QMainWindow(parent)
@@ -312,6 +313,27 @@ int My_IDE::calculateVisualColumn(CodeEditor *editor)
     return visualColumn + 1; // 列号从 1 开始
 }
 
+// 重写滚轮事件处理函数
+void My_IDE::wheelEvent(QWheelEvent *event)
+{
+    // 检查是否按下了 Ctrl 键
+    if (event->modifiers() & Qt::ControlModifier) {
+        int delta = event->angleDelta().y(); // 获取滚轮的滚动量
+
+        if (delta > 0) { // 滚轮向上滚动
+            fontsize = qMin(72, fontsize + 2); // 字体大小最大72
+        } else { // 滚轮向下滚动
+            fontsize = qMax(6, fontsize - 2); // 字体大小最小6
+        }
+        m_tabManager->setFontSize(fontsize); // 更新所有编辑器的字体大小
+        // 重新触发当前编辑器改变的信号，以更新状态栏和窗口标题等
+        on_currentEditorChanged(m_tabManager->currentEditor());
+        event->accept(); // 接受事件，表示已处理
+    } else {
+        // 如果没有按下 Ctrl 键，则调用基类的处理函数
+        QMainWindow::wheelEvent(event);
+    }
+}
 
 My_IDE::~My_IDE()
 {
