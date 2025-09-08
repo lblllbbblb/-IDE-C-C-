@@ -252,11 +252,19 @@ void My_IDE::on_currentEditorChanged(CodeEditor *editor)
     }
 
     if (editor) {
-        connection = connect(editor, &QPlainTextEdit::cursorPositionChanged, [=]() {
+        // 创建更新状态栏的lambda函数
+        auto updateStatusBar = [=]() {
             int line = editor->textCursor().blockNumber() + 1;
-            int col = editor->textCursor().columnNumber() + 1;
+            int col = calculateVisualColumn(editor); // 使用新的视觉列计算方法
             statusBar()->showMessage(QString("行: %1, 列: %2").arg(line).arg(col));
-        });
+        };
+
+        // 连接光标位置变化信号
+        connection = connect(editor, &QPlainTextEdit::cursorPositionChanged, updateStatusBar);
+
+        // 立即更新一次状态栏
+        updateStatusBar();
+
         // 更新窗口标题
         QString filePath = m_tabManager->getCurrentFilePath();
         if (!filePath.isEmpty()) {
@@ -269,6 +277,41 @@ void My_IDE::on_currentEditorChanged(CodeEditor *editor)
         setWindowTitle("My IDE");
     }
 }
+
+int My_IDE::calculateVisualColumn(CodeEditor *editor)
+{
+    QTextCursor cursor = editor->textCursor();
+    QTextBlock block = cursor.block();
+    int positionInBlock = cursor.position() - block.position();
+    QString text = block.text().left(positionInBlock);
+
+    int visualColumn = 0;
+
+    // 获取编辑器的 Tab 停止距离（以像素为单位）
+    qreal tabStopDistance = editor->tabStopDistance();
+
+    // 获取字体度量
+    QFontMetrics fm(editor->font());
+
+    // 计算一个空格的宽度
+    int spaceWidth = fm.horizontalAdvance(' ');
+
+    // 计算 Tab 大小（以空格数为单位）
+    int tabSize = (spaceWidth > 0) ? qRound(tabStopDistance / spaceWidth) : 4;
+
+    for (int i = 0; i < text.length(); i++) {
+        if (text[i] == '\t') {
+            // Tab 字符：前进到下一个 Tab 停止位置
+            visualColumn = (visualColumn / tabSize + 1) * tabSize;
+        } else {
+            // 普通字符：前进一个位置
+            visualColumn++;
+        }
+    }
+
+    return visualColumn + 1; // 列号从 1 开始
+}
+
 
 My_IDE::~My_IDE()
 {

@@ -5,16 +5,8 @@
 #include <QTextStream>
 #include <QDebug>
 
-// 确保包含 CodeEditor, CppHighlighter, BracketMatcher, FindReplaceDialog 的头文件
-// 如果它们不在当前目录，需要调整路径
-// #include "CodeEditor.h" // 已经通过 TabWidgetManager.h 包含了
-// #include "cpphighlighter.h" // 已经通过 TabWidgetManager.h 包含了
-// #include "bracketmatcher.h" // 已经通过 TabWidgetManager.h 包含了
-// #include "findreplacedialog.h" // 已经通过 TabWidgetManager.h 包含了
-
-
 TabWidgetManager::TabWidgetManager(QTabWidget *tabWidget, QObject *parent)
-    : QObject(parent), m_tabWidget(tabWidget), m_compilerProcess(new QProcess(this)) // 初始化 QProcess
+    : QObject(parent), m_tabWidget(tabWidget)
 {
     m_tabWidget->setTabsClosable(true); // 允许关闭 Tab
     connect(m_tabWidget, &QTabWidget::tabCloseRequested, this, &TabWidgetManager::onTabCloseRequested);
@@ -25,18 +17,11 @@ TabWidgetManager::TabWidgetManager(QTabWidget *tabWidget, QObject *parent)
             emit currentEditorChanged(nullptr); // 没有打开的编辑器
         }
     });
-
-    // 连接 QProcess 的信号到对应的槽
-    connect(m_compilerProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, &TabWidgetManager::onCompileProcessFinished);
-    connect(m_compilerProcess, &QProcess::errorOccurred,
-            this, &TabWidgetManager::onCompileProcessError);
 }
 
 TabWidgetManager::~TabWidgetManager()
 {
     // QTabWidget 会自动删除其子部件，m_editorFilePaths 中的 CodeEditor 无需手动删除
-    // m_compilerProcess 的父对象是 TabWidgetManager，所以它会在 TabWidgetManager 销毁时自动删除
 }
 
 void TabWidgetManager::initializeEditor(CodeEditor *editor)
@@ -203,82 +188,18 @@ void TabWidgetManager::compileCurrentFile()
     file.close();
 
     QString destname = currentPath;
-    destname.replace(".c", ".exe", Qt::CaseInsensitive).replace(".cpp", ".exe", Qt::CaseInsensitive); // 支持 .c 和 .cpp
+    destname.replace(".c", ".exe").replace(".cpp", ".exe"); // 支持 .c 和 .cpp
 
-    QStringList arguments;
-    // g++ 命令及其参数，-finput-charset 和 -fexec-charset 用于处理编码
-    arguments << currentPath << "-o" << destname << "-finput-charset=UTF-8" << "-fexec-charset=UTF-8";
+    QString command = "g++ -o \"" + destname + "\" \"" + currentPath + "\" -finput-charset=UTF-8 -fexec-charset=UTF-8";
+    qDebug() << "Compile command:" << command;
+    int result = system(command.toStdString().data());
 
-    qDebug() << "Compile command: g++" << arguments.join(" ");
-
-    // 检查是否有正在运行的编译进程
-    if (m_compilerProcess->state() == QProcess::Running) {
-        QMessageBox::information(m_tabWidget, "编译", "已有编译进程正在运行，请等待其完成。");
-        return;
-    }
-
-    // 启动编译进程
-    m_compilerProcess->start("g++", arguments);
-    if (!m_compilerProcess->waitForStarted(5000)) { // 等待5秒检查进程是否启动
-        QMessageBox::warning(m_tabWidget, "编译错误", "无法启动 g++ 编译器，请检查 PATH 设置或 g++ 是否安装。");
-    }
-}
-
-void TabWidgetManager::onCompileProcessFinished(int exitCode, QProcess::ExitStatus exitStatus)
-{
-    Q_UNUSED(exitStatus); // 避免未使用参数的警告
-
-    // 读取标准输出和标准错误输出
-    QString stdOutput = m_compilerProcess->readAllStandardOutput();
-    QString errOutput = m_compilerProcess->readAllStandardError();
-
-    QString message;
-    if (exitCode == 0) {
-        message = "编译成功！";
-        if (!stdOutput.isEmpty()) {
-            message += "\n标准输出:\n" + stdOutput;
-        }
-        QMessageBox::information(m_tabWidget, "编译", message);
+    if (result == 0) {
+        QMessageBox::information(m_tabWidget, "编译", "编译成功！");
     } else {
-        message = "编译失败！请检查代码。\n";
-        if (!errOutput.isEmpty()) {
-            message += "错误信息:\n" + errOutput;
-        } else if (!stdOutput.isEmpty()) {
-            message += "标准输出:\n" + stdOutput; // 有时错误信息也会在标准输出
-        } else {
-            message += "没有详细错误信息。";
-        }
-        QMessageBox::warning(m_tabWidget, "编译", message);
+        QMessageBox::warning(m_tabWidget, "编译", "编译失败！请检查代码。");
     }
 }
-
-void TabWidgetManager::onCompileProcessError(QProcess::ProcessError error)
-{
-    QString errorMessage;
-    switch (error) {
-    case QProcess::FailedToStart:
-        errorMessage = "编译器程序无法启动。请确保 g++ 已安装且其路径在系统的 PATH 环境变量中。";
-        break;
-    case QProcess::Crashed:
-        errorMessage = "编译器程序崩溃。";
-        break;
-    case QProcess::Timedout:
-        errorMessage = "编译器程序运行超时。";
-        break;
-    case QProcess::ReadError:
-        errorMessage = "从编译器读取数据时发生错误。";
-        break;
-    case QProcess::WriteError:
-        errorMessage = "向编译器写入数据时发生错误。";
-        break;
-    case QProcess::UnknownError:
-    default:
-        errorMessage = "发生未知错误。";
-        break;
-    }
-    QMessageBox::critical(m_tabWidget, "编译进程错误", errorMessage);
-}
-
 
 void TabWidgetManager::runCurrentFile()
 {
@@ -292,7 +213,7 @@ void TabWidgetManager::runCurrentFile()
     }
 
     QString destname = currentPath;
-    destname.replace(".c", ".exe", Qt::CaseInsensitive).replace(".cpp", ".exe", Qt::CaseInsensitive);
+    destname.replace(".c", ".exe").replace(".cpp", ".exe");
 
     QFileInfo executable(destname);
     if (!executable.exists()) {
@@ -300,23 +221,15 @@ void TabWidgetManager::runCurrentFile()
         return;
     }
 
-    // 使用 cmd /c 运行可执行文件并暂停，以便查看输出
-    // chcp 65001 用于设置控制台为 UTF-8 编码，防止中文乱码
-    QString commandToExecute = "cmd /c \"chcp 65001 > nul && \"" + QDir::toNativeSeparators(destname) + "\" & pause\"";
+    QString commandToExecute = "cmd /c \"chcp 65001 > nul && \"" + destname + "\" & pause\"";
     qDebug() << "Run command:" << commandToExecute;
-    // 使用 system 函数直接执行，因为它更适合运行需要用户交互的控制台程序
-    // 如果需要捕获输出，则需要使用 QProcess，但那样就不能直接暂停了
     system(commandToExecute.toStdString().data());
 }
 
 void TabWidgetManager::compileAndRunCurrentFile()
 {
-    // 先尝试编译
     compileCurrentFile();
-    // 注意：compileCurrentFile 现在是异步的，这里不能直接调用 runCurrentFile()
-    // 一个理想的实现是在 onCompileProcessFinished 中，如果编译成功，再触发 runCurrentFile()。
-    // 为了简化，目前不做自动链式调用，用户可以手动点击运行。
-    // 如果需要自动链式，需要更复杂的信号槽机制或者在 onCompileProcessFinished 中判断并调用 runCurrentFile。
+    runCurrentFile();
 }
 
 void TabWidgetManager::copy() { if (currentEditor()) currentEditor()->copy(); }
@@ -346,13 +259,12 @@ void TabWidgetManager::setFontSize(int size)
         f.setPixelSize(size);
         editor->setFont(f);
     }
-    // 遍历所有打开的编辑器并更新字体
     for (int i = 0; i < m_tabWidget->count(); ++i) {
         CodeEditor *otherEditor = qobject_cast<CodeEditor*>(m_tabWidget->widget(i));
-        if (otherEditor) { // 即使是当前编辑器也更新，确保一致性
+        if (otherEditor && otherEditor != editor) {
             QFont otherFont = otherEditor->font();
             otherFont.setPixelSize(size);
-            otherEditor->updateFont(otherFont); // 假设 CodeEditor 有一个 updateFont 方法
+            otherEditor->updateFont(otherFont);
         }
     }
 }

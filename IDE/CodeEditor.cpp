@@ -17,6 +17,8 @@ CodeEditor::CodeEditor(QWidget *parent)
 
     updateLineNumberAreaWidth();
     highlightCurrentLine();
+    QFontMetrics metrics(font());
+    setTabStopDistance(4 * metrics.horizontalAdvance(' '));
 }
 
 int CodeEditor::lineNumberAreaWidth() {
@@ -120,4 +122,15 @@ void CodeEditor::updateFont(const QFont &font)
 
     // 强制整个编辑器重绘
     viewport()->update();
+}
+
+void CodeEditor::keyPressEvent(QKeyEvent *e) {
+    if (e->key() == Qt::Key_Tab) {
+        // 插入四个空格而不是制表符
+        insertPlainText("    ");
+        return;
+    }
+
+    // 对于其他按键，使用默认处理
+    QPlainTextEdit::keyPressEvent(e);
 }

@@ -52,6 +52,7 @@ private:
 
     QAction *edit_undo;
     QAction *edit_redo;
+    CodeEditor *editor;
 
     // CppHighlighter *cppHighlighter; // 由 TabWidgetManager 管理
     // CodeEditor* text1; // 不再直接使用 CodeEditor
@@ -88,5 +89,6 @@ private slots:
     void on_closeTab(); // 新增槽函数
 
     void on_currentEditorChanged(CodeEditor *editor); // 接收 TabWidgetManager 的信号
+    int calculateVisualColumn(CodeEditor *editor);
 };
 #endif // MY_IDE_H

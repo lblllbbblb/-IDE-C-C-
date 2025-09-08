@@ -22,6 +22,9 @@ protected:
     // 窗口大小变化事件
     void resizeEvent(QResizeEvent *event) override;
 
+protected:
+    void keyPressEvent(QKeyEvent *e) override;
+
     // 确保 slots 声明在正确的访问区域
 private slots:
     void updateLineNumberAreaWidth();  // 无参数版本
