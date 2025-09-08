@@ -3,6 +3,7 @@
 
 #include <QTabWidget>
 #include <QMap>
+#include <QProcess> // 新增：包含 QProcess 头文件，用于执行外部命令
 #include "CodeEditor.h"
 #include "cpphighlighter.h"
 #include "bracketmatcher.h"
@@ -27,7 +28,7 @@ public:
     void saveCurrentFileAs(); // 另存为当前文件
     void closeCurrentTab(); // 关闭当前 Tab
 
-    // 编译运行相关，需要传递给当前的 CodeEditor
+    // 编译运行相关
     void compileCurrentFile();
     void runCurrentFile();
     void compileAndRunCurrentFile();
@@ -48,9 +49,16 @@ signals:
 private slots:
     void onTabCloseRequested(int index); // 处理 Tab 关闭请求
 
+    // 新增：处理编译进程结束的槽函数
+    void onCompileProcessFinished(int exitCode, QProcess::ExitStatus exitStatus);
+    // 新增：处理编译进程错误的槽函数
+    void onCompileProcessError(QProcess::ProcessError error);
+
+
 private:
     QTabWidget *m_tabWidget;
     QMap<CodeEditor*, QString> m_editorFilePaths; // 存储 CodeEditor 及其对应的文件路径
+    QProcess *m_compilerProcess; // 新增：用于执行 g++ 编译命令的 QProcess 实例
 
     // 辅助函数，用于初始化新的 CodeEditor
     void initializeEditor(CodeEditor *editor);
