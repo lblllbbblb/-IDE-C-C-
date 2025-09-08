@@ -21,17 +21,23 @@ CodeEditor::CodeEditor(QWidget *parent)
 
 int CodeEditor::lineNumberAreaWidth() {
     // 宽度计算逻辑（同原实现）
+    QFontMetrics fm(font());
+
     int digits = 1;
     int max = qMax(1, blockCount());
     while (max >= 10) {
         max /= 10;
         ++digits;
     }
-    return 3 + fontMetrics().horizontalAdvance(QLatin1Char('9')) * digits;
+
+    // 添加一些边距，确保数字不会太靠近边缘
+    int margin = 5;
+    return margin + fm.horizontalAdvance(QLatin1Char('9')) * digits;
 }
 // 添加以下三个函数的实现
 void CodeEditor::updateLineNumberAreaWidth() {
     setViewportMargins(lineNumberAreaWidth(), 0, 0, 0);
+    updateGeometry();
 }
 
 void CodeEditor::updateLineNumberArea(const QRect &rect, int dy) {
@@ -58,9 +64,12 @@ void CodeEditor::resizeEvent(QResizeEvent *event) {
     QRect cr = contentsRect();
     lineNumberArea->setGeometry(QRect(cr.left(), cr.top(),
                                       lineNumberAreaWidth(), cr.height()));
+    setViewportMargins(lineNumberAreaWidth(), 0, 0, 0);
+
 }
 void CodeEditor::lineNumberAreaPaintEvent(QPaintEvent* event) {
     QPainter painter(lineNumberArea);
+    painter.setFont(font()); // 设置与编辑器相同的字体
     painter.fillRect(event->rect(), Qt::lightGray);
 
     QTextBlock block = firstVisibleBlock();
@@ -84,4 +93,31 @@ void CodeEditor::lineNumberAreaPaintEvent(QPaintEvent* event) {
         bottom = top + static_cast<int>(blockBoundingRect(block).height());
         ++blockNumber;
     }
+}
+void CodeEditor::updateFont(const QFont &font)
+{
+    setFont(font);
+
+    // 强制重新计算字体度量
+    QFontMetrics fm(font);
+
+    // 重新计算并更新行号区域宽度
+    updateLineNumberAreaWidth();
+
+    // 强制立即调整行号区域大小
+    QRect cr = contentsRect();
+    lineNumberArea->setGeometry(QRect(cr.left(), cr.top(),
+                                      lineNumberAreaWidth(), cr.height()));
+
+    // 强制行号区域重绘
+    lineNumberArea->update();
+
+    // 更新视口布局
+    updateGeometry();
+
+    // 重新高亮当前行
+    highlightCurrentLine();
+
+    // 强制整个编辑器重绘
+    viewport()->update();
 }

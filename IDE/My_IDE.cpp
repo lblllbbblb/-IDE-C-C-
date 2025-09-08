@@ -221,6 +221,7 @@ void My_IDE::on_fontsize()
     if (ok) {
         fontsize = newFontSize;
         m_tabManager->setFontSize(fontsize);
+        on_currentEditorChanged(m_tabManager->currentEditor());
         QMessageBox::information(this, "设置成功", "设置已生效");
     } else {
         QMessageBox::information(this, "取消", "设置已取消");

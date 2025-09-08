@@ -259,4 +259,12 @@ void TabWidgetManager::setFontSize(int size)
         f.setPixelSize(size);
         editor->setFont(f);
     }
+    for (int i = 0; i < m_tabWidget->count(); ++i) {
+        CodeEditor *otherEditor = qobject_cast<CodeEditor*>(m_tabWidget->widget(i));
+        if (otherEditor && otherEditor != editor) {
+            QFont otherFont = otherEditor->font();
+            otherFont.setPixelSize(size);
+            otherEditor->updateFont(otherFont);
+        }
+    }
 }

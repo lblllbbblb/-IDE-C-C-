@@ -16,6 +16,7 @@ public:
 
     // 行号绘制入口
     void lineNumberAreaPaintEvent(QPaintEvent *event);
+    void updateFont(const QFont &font); //字体更新
 
 protected:
     // 窗口大小变化事件
