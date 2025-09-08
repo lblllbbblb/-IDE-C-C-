@@ -53,7 +53,7 @@ void CodeEditor::highlightCurrentLine() {
     QList<QTextEdit::ExtraSelection> extraSelections;
     if (!isReadOnly()) {
         QTextEdit::ExtraSelection selection;
-        selection.format.setBackground(QColor(Qt::yellow).lighter(160));
+        selection.format.setBackground(QColor(150, 150, 150, 80).lighter(120));
         selection.format.setProperty(QTextFormat::FullWidthSelection, true);
         selection.cursor = textCursor();
         selection.cursor.clearSelection();

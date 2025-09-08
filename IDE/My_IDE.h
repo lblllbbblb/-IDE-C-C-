@@ -62,6 +62,9 @@ private:
 
     int fontsize; // 字体大小仍然在 My_IDE 中维护
 
+    bool m_isDarkMode; // 标记当前是否为深色模式
+    QAction *settings_toggleColor;  // 新增：切换颜色模式的动作
+
     void initMenuSystem();
     void connectActions();
 
@@ -94,5 +97,9 @@ private slots:
 
     void on_currentEditorChanged(CodeEditor *editor); // 接收 TabWidgetManager 的信号
     int calculateVisualColumn(CodeEditor *editor);
+
+    // 新增：颜色模式相关函数声明
+    void on_toggleColorMode();
+    void applyColorMode(bool darkMode);
 };
 #endif // MY_IDE_H

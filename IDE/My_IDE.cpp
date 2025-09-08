@@ -8,7 +8,7 @@
 #include <QInputDialog> // 用于 QInputDialog
 
 My_IDE::My_IDE(QMainWindow *parent)
-    : QMainWindow(parent)
+    : QMainWindow(parent), m_isDarkMode(false) // 默认浅色模式
 {
     // 创建 QTabWidget 作为中心部件
     m_tabWidget = new QTabWidget(this);
@@ -105,6 +105,10 @@ void My_IDE::initMenuSystem()
     settings_fontsize = new QAction("设置字体大小", this);
     settings->addAction(settings_fontsize);
 
+    // 在设置菜单中添加颜色模式切换
+    settings_toggleColor = new QAction("切换深色/浅色模式", this);
+    settings->addAction(settings_toggleColor);
+
     // 连接所有信号槽
     connectActions();
 }
@@ -139,6 +143,9 @@ void My_IDE::connectActions()
 
     connect(edit_undo, &QAction::triggered, this, &My_IDE::on_undo);
     connect(edit_redo, &QAction::triggered, this, &My_IDE::on_redo);
+
+    // 连接颜色模式切换动作
+    connect(settings_toggleColor, &QAction::triggered, this, &My_IDE::on_toggleColorMode);
 }
 
 void My_IDE::on_new()
@@ -333,6 +340,59 @@ void My_IDE::wheelEvent(QWheelEvent *event)
         // 如果没有按下 Ctrl 键，则调用基类的处理函数
         QMainWindow::wheelEvent(event);
     }
+}
+
+void My_IDE::on_toggleColorMode()
+{
+    // 切换模式状态
+    m_isDarkMode = !m_isDarkMode;
+
+    // 应用颜色设置
+    applyColorMode(m_isDarkMode);
+
+    // 显示提示
+    QString mode = m_isDarkMode ? "深色" : "浅色";
+    QMessageBox::information(this, "模式切换", QString("已切换到%1模式").arg(mode));
+}
+
+void My_IDE::applyColorMode(bool darkMode)
+{
+    // 定义黑白两种模式的颜色
+    QString bgColor, textColor, menuColor, statusColor;
+
+    if (darkMode) {
+        // 深色模式：黑底白字
+        bgColor = "black";
+        textColor = "white";
+        menuColor = "#333333"; // 深灰色菜单
+        statusColor = "#444444"; // 深灰色状态栏
+    } else {
+        // 浅色模式：白底黑字
+        bgColor = "white";
+        textColor = "black";
+        menuColor = "#f0f0f0"; // 浅灰色菜单
+        statusColor = "#e0e0e0"; // 浅灰色状态栏
+    }
+
+    // 应用到所有编辑器
+    for (int i = 0; i < m_tabWidget->count(); ++i) {
+        // 假设每个标签页的部件是QPlainTextEdit或其派生类
+        QPlainTextEdit *editor = qobject_cast<QPlainTextEdit*>(m_tabWidget->widget(i));
+        if (editor) {
+            editor->setStyleSheet(QString("background-color: %1; color: %2;")
+                                      .arg(bgColor).arg(textColor));
+        }
+    }
+
+    // 应用到菜单栏
+    menuBar()->setStyleSheet(QString("QMenuBar { background-color: %1; color: %2; }"
+                                     "QMenu { background-color: %1; color: %2; }"
+                                     "QMenu::item:selected { background-color: #666666; }")
+                                 .arg(menuColor).arg(textColor));
+
+    // 应用到状态栏
+    statusBar()->setStyleSheet(QString("QStatusBar { background-color: %1; color: %2; }")
+                                   .arg(statusColor).arg(textColor));
 }
 
 My_IDE::~My_IDE()
