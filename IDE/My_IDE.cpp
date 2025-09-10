@@ -10,6 +10,9 @@
 My_IDE::My_IDE(QMainWindow *parent)
     : QMainWindow(parent), m_isDarkMode(false) // 默认浅色模式
 {
+    // 设置窗口图标
+    setWindowIcon(QIcon(":/icons/IDE.png"));
+
     // 创建 QTabWidget 作为中心部件
     m_tabWidget = new QTabWidget(this);
     setCentralWidget(m_tabWidget);
