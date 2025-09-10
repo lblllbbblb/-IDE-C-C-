@@ -1,6 +1,7 @@
 # 北理大二电信小学期-C/C++语言IDE项目  
 Beijing Institute of Technology(BIT) Sophomore Electronic Information Engineering Major Summer Session C/C++ IDE Project
-![icon](https://github.com/user-attachments/assets/6e9a3d4e-2667-4cee-ab34-be64e664e6e3)
+![Uploading icon - 副本.jpg…]()
+
 
 
 
