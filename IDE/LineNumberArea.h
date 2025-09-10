@@ -4,6 +4,8 @@
 #include <QWidget>
 #include <QPlainTextEdit>
 
+class CodeEditor; // 前向声明 CodeEditor
+
 class LineNumberArea : public QWidget {
 public:
     explicit LineNumberArea(QPlainTextEdit *editor);
@@ -14,6 +16,8 @@ public:
 protected:
     // 绘制事件委托给编辑器
     void paintEvent(QPaintEvent *event) override;
+    // 新增：鼠标按下事件
+    void mousePressEvent(QMouseEvent *event) override;
 
 private:
     QPlainTextEdit *editor; // 关联的编辑器对象
