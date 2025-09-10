@@ -34,6 +34,10 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         findreplacedialog.h
         findreplacedialog.cpp
         tabwidgetmanager.h tabwidgetmanager.cpp
+        formatter.h formatter.cpp
+
+
+
 
 
 

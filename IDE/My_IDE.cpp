@@ -4,8 +4,8 @@
 #include <QAction>
 #include <QVBoxLayout>
 #include <QStatusBar>
-#include <QFileInfo> // 用于获取文件名
-#include <QInputDialog> // 用于 QInputDialog
+#include <QFileInfo>
+#include <QInputDialog>
 
 My_IDE::My_IDE(QMainWindow *parent)
     : QMainWindow(parent), m_isDarkMode(false) // 默认浅色模式
@@ -16,6 +16,9 @@ My_IDE::My_IDE(QMainWindow *parent)
 
     // 初始化 TabWidgetManager
     m_tabManager = new TabWidgetManager(m_tabWidget, this);
+
+    // 初始化 Formatter
+    m_formatter = new Formatter(); // 新增：初始化 Formatter
 
     // 默认创建一个新文件
     m_tabManager->newFile();
@@ -34,7 +37,7 @@ My_IDE::My_IDE(QMainWindow *parent)
     initMenuSystem();
 
     // 设置初始字体大小
-    fontsize = 12; // 默认字体大小
+    fontsize = 20; // 默认字体大小
     m_tabManager->setFontSize(fontsize);
 
     // 初始状态更新，以防第一个Tab没有触发信号
@@ -83,6 +86,9 @@ void My_IDE::initMenuSystem()
     edit->addAction(edit_undo);
     edit->addAction(edit_redo);
     edit->addSeparator();
+    edit_formatCode = new QAction("格式化代码", this); // 新增：格式化代码动作
+    edit_formatCode->setShortcut(tr("Ctrl+Shift+F")); // 快捷键
+    edit->addAction(edit_formatCode); // 添加到编辑菜单
 
     // 构建菜单
     build = menuBar()->addMenu("构建");
@@ -129,6 +135,7 @@ void My_IDE::connectActions()
     connect(edit_cut, &QAction::triggered, this, &My_IDE::on_cut);
     connect(edit_selectAll, &QAction::triggered, this, &My_IDE::on_selectAll);
     connect(edit_findReplace, &QAction::triggered, this, &My_IDE::on_findReplace);
+    connect(edit_formatCode, &QAction::triggered, this, &My_IDE::on_formatCode); // 新增：连接格式化代码动作
 
     // 构建操作
     connect(build_compile, &QAction::triggered, this, &My_IDE::on_compile);
@@ -249,6 +256,20 @@ void My_IDE::on_redo()
 void My_IDE::on_closeTab()
 {
     m_tabManager->closeCurrentTab();
+}
+
+// 新增：格式化代码槽函数
+void My_IDE::on_formatCode()
+{
+    CodeEditor *currentEditor = m_tabManager->currentEditor();
+    if (currentEditor) {
+        QString originalCode = currentEditor->toPlainText();
+        QString formattedCode = m_formatter->formatCppCode(originalCode); // 调用 Formatter 进行格式化
+        currentEditor->setPlainText(formattedCode); // 将格式化后的代码设置回编辑器
+        QMessageBox::information(this, "格式化", "代码已格式化。");
+    } else {
+        QMessageBox::warning(this, "格式化", "没有打开的文件可供格式化。");
+    }
 }
 
 void My_IDE::on_currentEditorChanged(CodeEditor *editor)
@@ -397,5 +418,6 @@ void My_IDE::applyColorMode(bool darkMode)
 
 My_IDE::~My_IDE()
 {
+    // m_formatter 会自动被删除，因为它是 My_IDE 的成员变量
     // m_tabWidget 和 m_tabManager 会自动被删除，因为它们有父对象
 }

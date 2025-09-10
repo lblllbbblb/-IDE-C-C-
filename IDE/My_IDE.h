@@ -8,21 +8,18 @@
 #include <QWidget>
 #include <QDir>
 #include <QInputDialog>
-#include <QTabWidget> // 新增：包含 QTabWidget 头文件
-// #include "cpphighlighter.h" // 这些现在由 TabWidgetManager 管理
-// #include "CodeEditor.h"
-// #include "bracketmatcher.h"
-// #include "findreplacedialog.h"
-#include "TabWidgetManager.h" // 新增：包含 TabWidgetManager 头文件
-#include <QWheelEvent> // 新增：包含 QWheelEvent 头文件
+#include <QTabWidget>
+#include "TabWidgetManager.h"
+#include <QWheelEvent>
+#include "Formatter.h" // 新增：包含 Formatter 头文件
 
 class My_IDE : public QMainWindow
 {
     Q_OBJECT
 private:
-    // QString filename; // 不再由 My_IDE 直接管理，而是由 TabWidgetManager 管理
-    QTabWidget *m_tabWidget; // 新增：Tab 控件
-    TabWidgetManager *m_tabManager; // 新增：Tab 管理器
+    QTabWidget *m_tabWidget;
+    TabWidgetManager *m_tabManager;
+    Formatter *m_formatter; // 新增：Formatter 类的实例
 
     QMenu *file;
     QMenu *edit;
@@ -30,12 +27,12 @@ private:
     QMenu *help;
     QMenu *settings;
 
-    QAction *file_new; // 新增：新建文件动作
+    QAction *file_new;
     QAction *file_open;
     QAction *file_save;
     QAction *file_othersave;
     QAction *file_exit;
-    QAction *file_closeTab; // 新增：关闭当前 Tab 动作
+    QAction *file_closeTab;
 
     QAction *build_compile;
     QAction *build_run;
@@ -48,6 +45,7 @@ private:
     QAction *edit_cut;
     QAction *edit_selectAll;
     QAction *edit_findReplace;
+    QAction *edit_formatCode; // 新增：格式化代码动作
 
     QAction *settings_fontsize;
 
@@ -55,28 +53,23 @@ private:
     QAction *edit_redo;
     CodeEditor *editor;
 
-    // CppHighlighter *cppHighlighter; // 由 TabWidgetManager 管理
-    // CodeEditor* text1; // 不再直接使用 CodeEditor
-    // BracketMatcher *m_bracketMatcher; // 由 TabWidgetManager 管理
-    // FindReplaceDialog *m_findReplaceDialog; // 由 TabWidgetManager 管理
+    int fontsize;
 
-    int fontsize; // 字体大小仍然在 My_IDE 中维护
-
-    bool m_isDarkMode; // 标记当前是否为深色模式
-    QAction *settings_toggleColor;  // 新增：切换颜色模式的动作
+    bool m_isDarkMode;
+    QAction *settings_toggleColor;
 
     void initMenuSystem();
     void connectActions();
 
 protected:
-    void wheelEvent(QWheelEvent *event) override; // 重写滚轮事件
+    void wheelEvent(QWheelEvent *event) override;
 
 public:
     My_IDE(QMainWindow *parent = nullptr);
     ~My_IDE();
 
 private slots:
-    void on_new(); // 新增槽函数
+    void on_new();
     void on_open();
     void on_save();
     void on_othersave();
@@ -93,12 +86,12 @@ private slots:
     void on_fontsize();
     void on_undo();
     void on_redo();
-    void on_closeTab(); // 新增槽函数
+    void on_closeTab();
+    void on_formatCode(); // 新增：格式化代码槽函数
 
-    void on_currentEditorChanged(CodeEditor *editor); // 接收 TabWidgetManager 的信号
+    void on_currentEditorChanged(CodeEditor *editor);
     int calculateVisualColumn(CodeEditor *editor);
 
-    // 新增：颜色模式相关函数声明
     void on_toggleColorMode();
     void applyColorMode(bool darkMode);
 };
