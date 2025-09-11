@@ -4,6 +4,13 @@
 #include <QTextBlock>
 #include <QKeyEvent> // 用于处理 Ctrl+Tab
 #include <QStack>
+#include <QScrollBar>
+#include <QAbstractItemView>
+#include <QStringListModel> // 用于QCompleter的模型
+#include <QPlainTextEdit>
+#include <QRegularExpression>
+#include <Qset>
+#include <QApplication>
 
 CodeEditor::CodeEditor(QWidget *parent)
     : QPlainTextEdit(parent), m_foldingIndicatorWidth(15) { // 初始化折叠指示器宽度
@@ -29,9 +36,10 @@ CodeEditor::CodeEditor(QWidget *parent)
     highlightCurrentLine();
     QFontMetrics metrics(font());
     setTabStopDistance(4 * metrics.horizontalAdvance(' '));
-
+    setupCompleter();
     // 首次加载时更新折叠区域
     updateFoldingRegions();
+    connect(this, &QPlainTextEdit::textChanged, this, &CodeEditor::onTextChanged);
 }
 
 int CodeEditor::lineNumberAreaWidth() {
@@ -168,36 +176,110 @@ void CodeEditor::updateFont(const QFont &font)
 }
 
 void CodeEditor::keyPressEvent(QKeyEvent *e) {
+    // 1. 补全弹窗显示时优先处理选择操作
+    if (m_completer && m_completer->popup()->isVisible()) {
+        switch (e->key()) {
+        case Qt::Key_Enter:
+        case Qt::Key_Return:
+        case Qt::Key_Escape:
+        case Qt::Key_Tab:
+            e->ignore(); // 让补全器处理这些按键
+            return;
+        default:
+            break;
+        }
+    }
+
+    // 2. 处理Tab键（替换为4个空格）
     if (e->key() == Qt::Key_Tab) {
-        // 插入四个空格而不是制表符
         insertPlainText("    ");
+        e->accept();
         return;
     }
 
-    // 对于其他按键，使用默认处理
-    QPlainTextEdit::keyPressEvent(e);
-}
+    // 3. 判断是否为补全快捷键(Ctrl+Space)
+    bool isShortcut = (e->modifiers() & Qt::ControlModifier) &&
+                      (e->key() == Qt::Key_Space);
 
-// 新增：处理行号区域点击事件
-void CodeEditor::lineNumberAreaClicked(int y) {
-    // 将 Y 坐标转换为行号
-    QTextBlock block = firstVisibleBlock();
-    int top = static_cast<int>(blockBoundingGeometry(block).translated(contentOffset()).top());
-    int blockNumber = block.blockNumber();
+    // 4. 处理普通输入（非快捷键时）
+    if (!isShortcut) {
+        QPlainTextEdit::keyPressEvent(e);
+    }
 
-    while (block.isValid() && top <= y) {
-        int bottom = top + static_cast<int>(blockBoundingRect(block).height());
-        if (y >= top && y < bottom) {
-            // 点击的行号是 blockNumber
-            // 判断是否点击了折叠指示器区域
-            if (mapFromGlobal(QCursor::pos()).x() < m_foldingIndicatorWidth + viewportMargins().left()) {
-                toggleFolding(blockNumber);
-                break;
+    // 5. 定义补全相关判断条件
+    const bool isWordChar = e->text().contains(QRegularExpression("[A-Za-z0-9_]"));
+    const bool ctrlOrShift = e->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier);
+    const bool hasModifier = (e->modifiers() != Qt::NoModifier) && !ctrlOrShift;
+    static const QString eow("~!@#$%^&*()_+{}|:\"<>?,./;'[]\\-="); // 补全结束字符
+
+    // 6. 不需要显示补全的情况
+    if (!isShortcut && (!isWordChar || hasModifier || e->text().isEmpty() ||
+                        eow.contains(e->text().right(1)) ||
+                        textUnderCursor().length() < 2)) {
+        if (m_completer) m_completer->popup()->hide();
+        return;
+    }
+
+    // 7. 更新补全列表
+    QString completionPrefix = textUnderCursor();
+    if (m_completer) {
+        if (completionPrefix != m_completer->completionPrefix()) {
+            m_completer->setCompletionPrefix(completionPrefix);
+            m_completer->setModel(new QStringListModel(getContextualCompletions(), m_completer));
+            m_completer->popup()->setCurrentIndex(m_completer->completionModel()->index(0, 0));
+        }
+
+        // 8. 使用更精确的方法计算弹窗位置
+        // 获取光标矩形（相对于视口）
+        QRect cursorRect = this->cursorRect();
+
+        // 转换为全局坐标
+        QPoint globalCursorPos = viewport()->mapToGlobal(cursorRect.bottomLeft());
+
+        // 弹窗大小
+        int popupWidth = m_completer->popup()->sizeHintForColumn(0) +
+                         m_completer->popup()->verticalScrollBar()->sizeHint().width();
+
+        // 根据补全项数量动态调整高度
+        int itemCount = m_completer->completionCount();
+        int maxVisibleItems = 7;
+        int itemHeight = m_completer->popup()->sizeHintForRow(0);
+        int popupHeight = qMin(itemCount, maxVisibleItems) * itemHeight +
+                          m_completer->popup()->horizontalScrollBar()->sizeHint().height();
+
+        // 计算弹窗位置（光标下方）
+        QPoint popupPos(globalCursorPos.x(), globalCursorPos.y() + 2); // 光标底部 + 2px间距
+
+        QRect popupRect(popupPos, QSize(popupWidth, popupHeight));
+
+        // 确保弹窗不超出屏幕边界
+        QScreen *screen = QGuiApplication::screenAt(popupPos);
+        if (!screen) {
+            screen = QGuiApplication::primaryScreen();
+        }
+
+        if (screen) {
+            QRect screenGeometry = screen->availableGeometry();
+
+            // 检查弹窗是否会超出屏幕底部
+            if (popupRect.bottom() > screenGeometry.bottom()) {
+                // 如果超出，显示在光标上方
+                popupRect.moveBottom(globalCursorPos.y() - 2);
+            }
+
+            // 检查弹窗是否会超出屏幕右侧
+            if (popupRect.right() > screenGeometry.right()) {
+                popupRect.moveRight(screenGeometry.right());
+            }
+
+            // 检查弹窗是否会超出屏幕左侧
+            if (popupRect.left() < screenGeometry.left()) {
+                popupRect.moveLeft(screenGeometry.left());
             }
         }
-        block = block.next();
-        top = bottom;
-        blockNumber++;
+
+        // 显示补全弹窗
+        m_completer->complete(popupRect);
     }
 }
 
@@ -300,4 +382,245 @@ bool CodeEditor::isLineStartOfFoldedBlock(int lineNumber) const {
         }
     }
     return false;
+}
+void CodeEditor::setupCompleter()
+{
+    // 扩展默认补全词库，包含更多C++关键词和常用函数
+    defaultCompletions = {
+        // 基本类型和关键词
+        "int", "float", "double", "char", "bool", "void", "long", "short",
+        "class", "struct", "enum", "union", "namespace", "using", "typedef",
+        "public", "private", "protected", "virtual", "override", "final",
+        "static", "const", "volatile", "mutable", "extern", "register",
+        // 控制流
+        "if", "else", "switch", "case", "default", "for", "while", "do",
+        "break", "continue", "return", "goto",
+        // 常用容器和函数
+        "vector", "string", "map", "set", "list", "queue", "stack",
+        "cout", "cin", "printf", "scanf", "malloc", "free", "new", "delete",
+        "sizeof", "NULL", "nullptr", "this", "true", "false",
+        // 常用函数
+        "main", "printf", "scanf", "cout<<", "cin>>", "getline", "push_back",
+        "pop_back", "size", "length", "begin", "end", "insert", "erase"
+    };
+
+    // 补全器初始化（保持不变）
+    m_completer = new QCompleter(defaultCompletions, this);
+    m_completer->setWidget(this);
+    m_completer->setCompletionMode(QCompleter::PopupCompletion);
+    m_completer->setCaseSensitivity(Qt::CaseInsensitive);
+    m_completer->setFilterMode(Qt::MatchContains);
+
+    // 补全弹窗样式（保持不变）
+    QAbstractItemView *popup = m_completer->popup();
+    popup->setStyleSheet("QListView { font-size: 14px; border: 1px solid #ccc; }"
+                         "QListView::item:selected { background-color: #4A86E8; color: white; }");
+    popup->setMinimumWidth(150);
+
+    connect(m_completer, QOverload<const QString &>::of(&QCompleter::activated),
+            this, &CodeEditor::insertCompletion);
+}
+
+QStringList CodeEditor::getContextualCompletions() const
+{
+    QString currentText = textUnderCursor();
+    QStringList contextualCompletions = defaultCompletions;
+
+    // 添加变量名、函数名和类名
+    contextualCompletions << extractVariables();
+    contextualCompletions << extractFunctions();
+    contextualCompletions << extractClasses();
+
+    // 过滤与当前输入匹配的补全项
+    if (!currentText.isEmpty()) {
+        QRegularExpression regex(currentText, QRegularExpression::CaseInsensitiveOption);
+        contextualCompletions = contextualCompletions.filter(regex);
+    }
+
+    // 语法感知补全（如cout相关）
+    QTextCursor cursor = textCursor();
+    cursor.movePosition(QTextCursor::StartOfLine);
+    QString lineText = cursor.block().text();
+    if (lineText.contains("cout.")) {
+        contextualCompletions.append("cout<<");
+    }
+
+    // 去重处理（兼容低版本Qt）
+    QSet<QString> tempSet;
+    for (const QString& item : contextualCompletions) {
+        tempSet.insert(item);
+    }
+    contextualCompletions.clear();
+    QSet<QString>::iterator it;
+    for (it = tempSet.begin(); it != tempSet.end(); ++it) {
+        contextualCompletions.append(*it);
+    }
+
+    return contextualCompletions;
+}
+
+void CodeEditor::focusInEvent(QFocusEvent *e) {
+    if (m_completer) {
+        m_completer->setWidget(this);
+    }
+    QPlainTextEdit::focusInEvent(e);
+}
+
+QString CodeEditor::textUnderCursor() const {
+    QTextCursor cursor = textCursor();
+    cursor.select(QTextCursor::WordUnderCursor); // 选中光标下的单词
+    return cursor.selectedText();
+}
+
+void CodeEditor::insertCompletion(const QString &completion) {
+    if (!m_completer) return;
+
+    QTextCursor cursor = textCursor();
+    // 获取当前补全前缀的长度（即用户已经输入的部分）
+    int prefixLength = m_completer->completionPrefix().length();
+
+    // 关键修复：删除光标前的前缀内容（避免补全内容与原有内容重叠）
+    cursor.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, prefixLength);
+    cursor.removeSelectedText();
+
+    // 插入完整的补全内容
+    cursor.insertText(completion);
+
+    // 更新光标位置
+    setTextCursor(cursor);
+}
+void CodeEditor::lineNumberAreaClicked(int y) {
+    // 将 Y 坐标转换为行号
+    QTextBlock block = firstVisibleBlock();
+    int top = static_cast<int>(blockBoundingGeometry(block).translated(contentOffset()).top());
+    int blockNumber = block.blockNumber();
+
+    while (block.isValid() && top <= y) {
+        int bottom = top + static_cast<int>(blockBoundingRect(block).height());
+        if (y >= top && y < bottom) {
+            // 点击的行号是 blockNumber
+            // 判断是否点击了折叠指示器区域
+            if (mapFromGlobal(QCursor::pos()).x() < m_foldingIndicatorWidth + viewportMargins().left()) {
+                toggleFolding(blockNumber);
+                break;
+            }
+        }
+        block = block.next();
+        top = bottom;
+        blockNumber++;
+    }
+}
+QStringList CodeEditor::extractVariables() const
+{
+    QStringList variables;
+    QTextDocument *doc = document();
+    if (!doc) return variables;
+
+    // 正则表达式匹配C++变量定义（基础版本，可根据需要扩展）
+    // 匹配规则：类型 + 空格 + 变量名（支持指针和引用）
+    QRegularExpression varRegex(
+        // 匹配常见类型（可扩展）
+        "(int|float|double|char|bool|void|long|short|string|vector|auto)\\s+"
+        // 匹配指针(*)、引用(&)或普通变量
+        "([*&]?\\s*[a-zA-Z_][a-zA-Z0-9_]*)"
+        // 忽略初始化部分(= ...)
+        "(\\s*=.*)?;",
+        QRegularExpression::CaseInsensitiveOption
+        );
+
+    // 遍历所有行提取变量
+    for (int i = 0; i < doc->blockCount(); ++i) {
+        QString line = doc->findBlockByNumber(i).text();
+        QRegularExpressionMatch match = varRegex.match(line);
+
+        if (match.hasMatch()) {
+            QString varName = match.captured(2).trimmed();
+            // 清理可能的指针/引用符号
+            varName.remove(QRegularExpression("[*&]"));
+            if (!varName.isEmpty() && !variables.contains(varName)) {
+                variables << varName;
+            }
+        }
+    }
+
+    return variables;
+}
+void CodeEditor::onTextChanged()
+{
+    // 当文本变化时，如果补全弹窗可见则更新
+    if (m_completer && m_completer->popup()->isVisible()) {
+        QString completionPrefix = textUnderCursor();
+        m_completer->setCompletionPrefix(completionPrefix);
+        m_completer->setModel(new QStringListModel(getContextualCompletions(), m_completer));
+    }
+}
+
+// 1. 提取函数名
+QStringList CodeEditor::extractFunctions() const
+{
+    QStringList functions;
+    QTextDocument *doc = document();
+    if (!doc) return functions;
+
+    // 匹配函数定义（基础版本）
+    // 支持：返回类型 + 函数名 + (参数列表)
+    QRegularExpression funcRegex(
+        // 匹配返回类型（包含指针和引用）
+        "([a-zA-Z_][a-zA-Z0-9_*&\\s:]+)\\s+"
+        // 匹配函数名
+        "([a-zA-Z_][a-zA-Z0-9_]*)\\s*"
+        // 匹配参数列表
+        "\\([^\\)]*\\)",
+        QRegularExpression::CaseInsensitiveOption
+        );
+
+    // 遍历所有行提取函数
+    for (int i = 0; i < doc->blockCount(); ++i) {
+        QString line = doc->findBlockByNumber(i).text();
+        // 跳过注释行
+        if (line.trimmed().startsWith("//") || line.trimmed().startsWith("/*"))
+            continue;
+
+        QRegularExpressionMatch match = funcRegex.match(line);
+        if (match.hasMatch()) {
+            QString funcName = match.captured(2).trimmed();
+            if (!funcName.isEmpty() && !functions.contains(funcName)) {
+                functions << funcName;
+            }
+        }
+    }
+
+    return functions;
+}
+
+// 2. 提取类名和结构体名
+QStringList CodeEditor::extractClasses() const
+{
+    QStringList classes;
+    QTextDocument *doc = document();
+    if (!doc) return classes;
+
+    // 匹配类和结构体定义
+    QRegularExpression classRegex(
+        "(class|struct)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+        QRegularExpression::CaseInsensitiveOption
+        );
+
+    // 遍历所有行提取类名
+    for (int i = 0; i < doc->blockCount(); ++i) {
+        QString line = doc->findBlockByNumber(i).text();
+        // 跳过注释行
+        if (line.trimmed().startsWith("//") || line.trimmed().startsWith("/*"))
+            continue;
+
+        QRegularExpressionMatch match = classRegex.match(line);
+        if (match.hasMatch()) {
+            QString className = match.captured(2).trimmed();
+            if (!className.isEmpty() && !classes.contains(className)) {
+                classes << className;
+            }
+        }
+    }
+
+    return classes;
 }

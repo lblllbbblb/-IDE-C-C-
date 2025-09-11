@@ -4,6 +4,9 @@
 #include <QPlainTextEdit>
 #include <QWidget>
 #include <QVector> // 新增：用于存储折叠区域信息
+#include <QCompleter>
+#include <QStringList>
+#include <QAbstractItemView>
 
 class LineNumberArea;
 
@@ -28,13 +31,15 @@ public:
 
     // 新增：处理行号区域点击事件的槽函数
     void lineNumberAreaClicked(int y);
+    void insertCompletion(const QString &completion);
+
 
 protected:
     // 窗口大小变化事件
     void resizeEvent(QResizeEvent *event) override;
-
-protected:
     void keyPressEvent(QKeyEvent *e) override;
+    void focusInEvent(QFocusEvent *e) override;
+
 
     // 确保 slots 声明在正确的访问区域
 private slots:
@@ -44,6 +49,7 @@ private slots:
     void updateFoldingRegions(); // 新增：更新折叠区域信息
     void handleBlockCountChanged(int newBlockCount); // 新增：处理行数变化
 
+    QString textUnderCursor() const;
 private:
     LineNumberArea *lineNumberArea; // 行号组件指针
 
@@ -55,6 +61,17 @@ private:
     void applyFolding(); // 根据 m_foldingBlocks 应用折叠状态
     bool isLineFolded(int lineNumber) const; // 判断某行是否被折叠
     bool isLineStartOfFoldedBlock(int lineNumber) const; // 判断某行是否是已折叠区域的起始行
+    QCompleter *m_completer; // 自动补全器
+    QStringList defaultCompletions; // 添加这行
+    // 设置自动补全的单词列表
+    void setupCompleter();
+    QStringList getContextualCompletions() const;
+    QStringList extractVariables() const;
+    void onTextChanged();
+    QStringList extractFunctions() const;    // 提取函数名
+    QStringList extractClasses() const;      // 提取类名
+
+
 };
 
 #endif // CODEEDITOR_H
