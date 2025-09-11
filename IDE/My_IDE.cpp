@@ -66,17 +66,14 @@ My_IDE::My_IDE(QMainWindow *parent)
 
 void My_IDE::setupDebuggerUI()
 {
-    // 创建调试输出窗口
     m_debugOutputWidget = new QTextEdit(this);
     m_debugOutputWidget->setReadOnly(true);
     m_debugOutputWidget->setFont(QFont("Consolas", 10));
-    m_debugOutputWidget->setStyleSheet("background-color: #2b2b2b; color: #a9b7c6;"); // 深色背景，浅色文本
-
+    // 初始浅色模式：背景白色，文字天蓝色
+    m_debugOutputWidget->setStyleSheet("background-color: white; color: #87CEEB;");
     QDockWidget *debugDock = new QDockWidget("调试输出", this);
     debugDock->setWidget(m_debugOutputWidget);
     addDockWidget(Qt::BottomDockWidgetArea, debugDock);
-
-    // 将调试输出控件传递给 DebuggerManager
     m_debuggerManager->setOutputWidget(m_debugOutputWidget);
 }
 
@@ -447,45 +444,70 @@ void My_IDE::on_toggleColorMode()
 
 void My_IDE::applyColorMode(bool darkMode)
 {
-    QString bgColor, textColor, menuColor, statusColor, debugOutputBg, debugOutputText;
+    // 基础色
+    QString bgColor, textColor, menuColor, statusColor;
+    // 调试输出专用色
+    QString debugOutputBg, debugOutputText;
 
     if (darkMode) {
-        bgColor = "#2b2b2b"; // 深色背景
-        textColor = "#a9b7c6"; // 浅色文本
-        menuColor = "#3c3f41"; // 深灰色菜单
-        statusColor = "#3c3f41"; // 深灰色状态栏
+        // 深色模式
+        bgColor = "#2b2b2b";      // 编辑区背景
+        textColor = "#a9b7c6";    // 编辑区前景
+        menuColor = "#3c3f41";    // 菜单/菜单栏背景
+        statusColor = "#3c3f41";  // 状态栏背景
         debugOutputBg = "#2b2b2b";
-        debugOutputText = "#a9b7c6";
+        debugOutputText = "#87CEEB"; // 深色模式下调试输出文本颜色
     } else {
+        // 浅色模式
         bgColor = "white";
         textColor = "black";
         menuColor = "#f0f0f0";
         statusColor = "#e0e0e0";
         debugOutputBg = "white";
-        debugOutputText = "black";
+        debugOutputText = "#87CEEB"; // 浅色模式下调试输出文本为天蓝色
     }
 
+    // 更新所有 CodeEditor 的样式
     for (int i = 0; i < m_tabWidget->count(); ++i) {
-        CodeEditor *editor = qobject_cast<CodeEditor*>(m_tabWidget->widget(i));
-        if (editor) {
+        if (auto *editor = qobject_cast<CodeEditor*>(m_tabWidget->widget(i))) {
             editor->setStyleSheet(QString("background-color: %1; color: %2;")
-                                      .arg(bgColor).arg(textColor));
-            // 重新设置高亮器样式（如果高亮器有自己的颜色设置，需要在这里更新）
-            // 例如：editor->highlighter()->rehighlight();
+                                      .arg(bgColor, textColor));
+            // 若有语法高亮器并且需要基于模式重绘，可在此调用 rehighlight()
+            // if (editor->highlighter()) editor->highlighter()->rehighlight();
         }
     }
 
-    menuBar()->setStyleSheet(QString("QMenuBar { background-color: %1; color: %2; }"
-                                     "QMenu { background-color: %1; color: %2; }"
-                                     "QMenu::item:selected { background-color: #666666; }")
-                                 .arg(menuColor).arg(textColor));
+    // 更新菜单栏与菜单
+    menuBar()->setStyleSheet(
+        QString(
+            "QMenuBar { background-color: %1; color: %2; }"
+            "QMenuBar::item:selected { background-color: %3; }"
+            "QMenu { background-color: %1; color: %2; }"
+            "QMenu::item:selected { background-color: %3; }"
+            ).arg(menuColor,
+                 textColor,
+                 darkMode ? "#505354" : "#d0d0d0")
+        );
 
-    statusBar()->setStyleSheet(QString("QStatusBar { background-color: %1; color: %2; }")
-                                   .arg(statusColor).arg(textColor));
+    // 更新状态栏
+    statusBar()->setStyleSheet(
+        QString("QStatusBar { background-color: %1; color: %2; }")
+            .arg(statusColor, textColor)
+        );
 
+    // 更新调试输出（关键：保证颜色按模式固定为上面的两种）
     if (m_debugOutputWidget) {
-        m_debugOutputWidget->setStyleSheet(QString("background-color: %1; color: %2;")
-                                               .arg(debugOutputBg).arg(debugOutputText));
+        m_debugOutputWidget->setStyleSheet(
+            QString("background-color: %1; color: %2;")
+                .arg(debugOutputBg, debugOutputText)
+            );
+
+        // 如果你的输出是通过 HTML（setHtml/setText）写入，且内部含 <font color="...">，
+        // 这些内联颜色会覆盖样式表。为保险可清除字符格式或统一强制颜色：
+        // QTextCharFormat fmt; fmt.setForeground(QColor(debugOutputText));
+        // QTextCursor c = m_debugOutputWidget->textCursor();
+        // c.select(QTextCursor::Document); c.mergeCharFormat(fmt);
+        // m_debugOutputWidget->setTextCursor(c);
     }
 }
 

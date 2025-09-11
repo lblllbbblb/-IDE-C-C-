@@ -185,7 +185,7 @@ void DebuggerManager::onGdbReadyReadStandardOutput()
     QByteArray data = m_gdbProcess->readAllStandardOutput();
     QString output = QString::fromUtf8(data);
     qDebug() << "GDB STDOUT:" << output;
-    appendToOutput(output, Qt::black);
+    appendToOutput(output, QColor("#a9b7c6"));
 
     // 解析 GDB MI 输出并检测断点命中
     QRegularExpression stopRegex("^\\*stopped,reason=\"(.*?)\",.*?,file=\"(.*?)\",line=\"(\\d+)\"");

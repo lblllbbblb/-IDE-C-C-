@@ -47,7 +47,7 @@ private slots:
 
 private:
     void sendCommandToGdb(const QString &command);
-    void appendToOutput(const QString &text, const QColor &color = Qt::black);
+    void appendToOutput(const QString &text, const QColor &color = QColor("#a9b7c6"));
 
     QProcess *m_gdbProcess;
     QTextEdit *m_outputWidget;
