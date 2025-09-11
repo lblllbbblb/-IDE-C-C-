@@ -4,6 +4,7 @@
 #include <QMessageBox>
 #include <QTextStream>
 #include <QDebug>
+#include <QProcess>
 
 TabWidgetManager::TabWidgetManager(QTabWidget *tabWidget, QObject *parent)
     : QObject(parent), m_tabWidget(tabWidget)
@@ -190,15 +191,26 @@ void TabWidgetManager::compileCurrentFile()
     QString destname = currentPath;
     destname.replace(".c", ".exe").replace(".cpp", ".exe"); // 支持 .c 和 .cpp
 
-    QString command = "g++ -o \"" + destname + "\" \"" + currentPath + "\" -finput-charset=UTF-8 -fexec-charset=UTF-8";
-    qDebug() << "Compile command:" << command;
-    int result = system(command.toStdString().data());
+    QString compiler = "g++";
+    QStringList arguments;
+    arguments << "-o" << destname << currentPath << "-finput-charset=UTF-8" << "-fexec-charset=UTF-8";
 
-    if (result == 0) {
-        QMessageBox::information(m_tabWidget, "编译", "编译成功！");
+    qDebug() << "Compile command:" << compiler << arguments.join(" ");
+
+    QProcess *process = new QProcess(this);
+    process->start(compiler, arguments);
+    process->waitForFinished(-1); // 等待编译完成
+
+    QString stdoutOutput = process->readAllStandardOutput();
+    QString stderrOutput = process->readAllStandardError();
+
+    if (process->exitCode() == 0) {
+        QMessageBox::information(m_tabWidget, "编译成功", "编译成功！\n" + stdoutOutput);
     } else {
-        QMessageBox::warning(m_tabWidget, "编译", "编译失败！请检查代码。");
+        QMessageBox::warning(m_tabWidget, "编译失败", "编译失败！请检查代码。\n" + stderrOutput);
     }
+
+    process->deleteLater(); // 释放QProcess对象
 }
 
 void TabWidgetManager::runCurrentFile()
