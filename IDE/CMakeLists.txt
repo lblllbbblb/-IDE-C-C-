@@ -36,6 +36,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         tabwidgetmanager.h tabwidgetmanager.cpp
         formatter.h formatter.cpp
         Resources.qrc
+        debuggermanager.h debuggermanager.cpp
+        breakpointmanager.h breakpointmanager.cpp
 
 
 

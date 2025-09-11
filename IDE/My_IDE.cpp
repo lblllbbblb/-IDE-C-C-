@@ -6,9 +6,13 @@
 #include <QStatusBar>
 #include <QFileInfo>
 #include <QInputDialog>
+#include <QDockWidget> // 新增：用于调试输出窗口
+#include <QTextCharFormat> // 用于行高亮
+#include <QTextCursor>
+#include <QApplication> // 用于 QApplication::quit()
 
 My_IDE::My_IDE(QMainWindow *parent)
-    : QMainWindow(parent), m_isDarkMode(false) // 默认浅色模式
+    : QMainWindow(parent), m_isDarkMode(false)
 {
     // 设置窗口图标
     setWindowIcon(QIcon(":/icons/IDE.png"));
@@ -21,7 +25,10 @@ My_IDE::My_IDE(QMainWindow *parent)
     m_tabManager = new TabWidgetManager(m_tabWidget, this);
 
     // 初始化 Formatter
-    m_formatter = new Formatter(); // 新增：初始化 Formatter
+    m_formatter = new Formatter();
+
+    // 初始化 DebuggerManager
+    m_debuggerManager = new DebuggerManager(this);
 
     // 默认创建一个新文件
     m_tabManager->newFile();
@@ -33,8 +40,15 @@ My_IDE::My_IDE(QMainWindow *parent)
     QStatusBar *statusBar = new QStatusBar;
     setStatusBar(statusBar);
 
-    // 连接光标位置变化信号 (连接到 TabManager 发出的当前编辑器的信号)
-    // 确保在 on_currentEditorChanged 中连接此信号，因为编辑器会动态变化
+    // 设置调试器 UI
+    setupDebuggerUI();
+
+    // 连接 DebuggerManager 的信号到 My_IDE 的槽
+    connect(m_debuggerManager, &DebuggerManager::debuggerStarted, this, &My_IDE::on_debuggerStarted);
+    connect(m_debuggerManager, &DebuggerManager::debuggerStopped, this, &My_IDE::on_debuggerStopped);
+    connect(m_debuggerManager, &DebuggerManager::hitBreakpoint, this, &My_IDE::on_hitBreakpoint);
+    connect(m_debuggerManager, &DebuggerManager::currentLineChanged, this, &My_IDE::on_currentDebugLineChanged);
+
 
     // 初始化菜单系统
     initMenuSystem();
@@ -45,17 +59,36 @@ My_IDE::My_IDE(QMainWindow *parent)
 
     // 初始状态更新，以防第一个Tab没有触发信号
     on_currentEditorChanged(m_tabManager->currentEditor());
+
+    // 初始禁用调试控制动作
+    on_debuggerStopped();
+}
+
+void My_IDE::setupDebuggerUI()
+{
+    // 创建调试输出窗口
+    m_debugOutputWidget = new QTextEdit(this);
+    m_debugOutputWidget->setReadOnly(true);
+    m_debugOutputWidget->setFont(QFont("Consolas", 10));
+    m_debugOutputWidget->setStyleSheet("background-color: #2b2b2b; color: #a9b7c6;"); // 深色背景，浅色文本
+
+    QDockWidget *debugDock = new QDockWidget("调试输出", this);
+    debugDock->setWidget(m_debugOutputWidget);
+    addDockWidget(Qt::BottomDockWidgetArea, debugDock);
+
+    // 将调试输出控件传递给 DebuggerManager
+    m_debuggerManager->setOutputWidget(m_debugOutputWidget);
 }
 
 void My_IDE::initMenuSystem()
 {
     // 文件菜单
     file = menuBar()->addMenu("文件");
-    file_new = new QAction("新建", this); // 新增新建文件动作
+    file_new = new QAction("新建", this);
     file_open = new QAction("打开", this);
     file_save = new QAction("保存", this);
     file_othersave = new QAction("另存为", this);
-    file_closeTab = new QAction("关闭当前文件", this); // 新增关闭 Tab 动作
+    file_closeTab = new QAction("关闭当前文件", this);
     file_exit = new QAction("退出", this);
 
     // 添加快捷键
@@ -63,7 +96,7 @@ void My_IDE::initMenuSystem()
     file_open->setShortcut(tr("Ctrl+O"));
     file_save->setShortcut(tr("Ctrl+S"));
     file_othersave->setShortcut(tr("Ctrl+Shift+S"));
-    file_closeTab->setShortcut(tr("Ctrl+W")); // 关闭 Tab 快捷键
+    file_closeTab->setShortcut(tr("Ctrl+W"));
 
     // 添加菜单项
     file->addActions({file_new, file_open, file_save, file_othersave});
@@ -89,9 +122,9 @@ void My_IDE::initMenuSystem()
     edit->addAction(edit_undo);
     edit->addAction(edit_redo);
     edit->addSeparator();
-    edit_formatCode = new QAction("格式化代码", this); // 新增：格式化代码动作
-    edit_formatCode->setShortcut(tr("Ctrl+Shift+F")); // 快捷键
-    edit->addAction(edit_formatCode); // 添加到编辑菜单
+    edit_formatCode = new QAction("格式化代码", this);
+    edit_formatCode->setShortcut(tr("Ctrl+Shift+F"));
+    edit->addAction(edit_formatCode);
 
     // 构建菜单
     build = menuBar()->addMenu("构建");
@@ -102,6 +135,30 @@ void My_IDE::initMenuSystem()
     build_run->setShortcut(tr("F10"));
     build_compileAndRun->setShortcut(tr("F11"));
     build->addActions({build_compile, build_run, build_compileAndRun});
+
+    // 新增：调试菜单
+    debug = menuBar()->addMenu("调试");
+    debug_start = new QAction("开始调试", this);
+    debug_stop = new QAction("停止调试", this);
+    debug_continue = new QAction("继续", this);
+    debug_stepInto = new QAction("步进", this);
+    debug_stepOver = new QAction("步过", this);
+    debug_stepOut = new QAction("步出", this);
+    debug_toggleBreakpoint = new QAction("切换断点", this);
+
+    debug_start->setShortcut(tr("F5"));
+    debug_stop->setShortcut(tr("Shift+F5"));
+    debug_continue->setShortcut(tr("F8"));
+    debug_stepInto->setShortcut(tr("F7"));
+    debug_stepOver->setShortcut(tr("F6"));
+    debug_stepOut->setShortcut(tr("Shift+F7"));
+    debug_toggleBreakpoint->setShortcut(tr("F12")); // 示例快捷键
+
+    debug->addActions({debug_start, debug_stop});
+    debug->addSeparator();
+    debug->addActions({debug_continue, debug_stepInto, debug_stepOver, debug_stepOut});
+    debug->addSeparator();
+    debug->addAction(debug_toggleBreakpoint);
 
     // 帮助菜单
     help = menuBar()->addMenu("帮助");
@@ -125,11 +182,11 @@ void My_IDE::initMenuSystem()
 void My_IDE::connectActions()
 {
     // 文件操作
-    connect(file_new, &QAction::triggered, this, &My_IDE::on_new); // 连接新建文件动作
+    connect(file_new, &QAction::triggered, this, &My_IDE::on_new);
     connect(file_open, &QAction::triggered, this, &My_IDE::on_open);
     connect(file_save, &QAction::triggered, this, &My_IDE::on_save);
     connect(file_othersave, &QAction::triggered, this, &My_IDE::on_othersave);
-    connect(file_closeTab, &QAction::triggered, this, &My_IDE::on_closeTab); // 连接关闭 Tab 动作
+    connect(file_closeTab, &QAction::triggered, this, &My_IDE::on_closeTab);
     connect(file_exit, &QAction::triggered, this, &My_IDE::on_exit);
 
     // 编辑操作
@@ -138,12 +195,21 @@ void My_IDE::connectActions()
     connect(edit_cut, &QAction::triggered, this, &My_IDE::on_cut);
     connect(edit_selectAll, &QAction::triggered, this, &My_IDE::on_selectAll);
     connect(edit_findReplace, &QAction::triggered, this, &My_IDE::on_findReplace);
-    connect(edit_formatCode, &QAction::triggered, this, &My_IDE::on_formatCode); // 新增：连接格式化代码动作
+    connect(edit_formatCode, &QAction::triggered, this, &My_IDE::on_formatCode);
 
     // 构建操作
     connect(build_compile, &QAction::triggered, this, &My_IDE::on_compile);
     connect(build_run, &QAction::triggered, this, &My_IDE::on_run);
     connect(build_compileAndRun, &QAction::triggered, this, &My_IDE::on_compileAndRun);
+
+    // 新增：调试操作
+    connect(debug_start, &QAction::triggered, this, &My_IDE::on_debugStart);
+    connect(debug_stop, &QAction::triggered, this, &My_IDE::on_debugStop);
+    connect(debug_continue, &QAction::triggered, this, &My_IDE::on_debugContinue);
+    connect(debug_stepInto, &QAction::triggered, this, &My_IDE::on_debugStepInto);
+    connect(debug_stepOver, &QAction::triggered, this, &My_IDE::on_debugStepOver);
+    connect(debug_stepOut, &QAction::triggered, this, &My_IDE::on_debugStepOut);
+    connect(debug_toggleBreakpoint, &QAction::triggered, this, &My_IDE::on_debugToggleBreakpoint);
 
     // 帮助
     connect(help_about, &QAction::triggered, this, &My_IDE::on_about);
@@ -165,7 +231,7 @@ void My_IDE::on_new()
 
 void My_IDE::on_open()
 {
-    QString selectedFilename = QFileDialog::getOpenFileName(this);
+    QString selectedFilename = QFileDialog::getOpenFileName(this, "打开文件", QDir::currentPath(), "C/C++ Files (*.c *.cpp *.h);;Text Files (*.txt);;All Files (*)");
     if (!selectedFilename.isEmpty()) {
         m_tabManager->openFile(selectedFilename);
     }
@@ -183,13 +249,22 @@ void My_IDE::on_othersave()
 
 void My_IDE::on_about()
 {
-    QMessageBox::information(this, "关于", "版权所有");
+    QMessageBox::information(this, "关于 My_IDE",
+                             "My_IDE 是一个基于 Qt 的简单 C/C++ 集成开发环境。\n"
+                             "版本: 1.0\n"
+                             "作者: [你的名字]");
 }
 
 void My_IDE::on_exit()
 {
     // TODO: 退出前检查所有文件是否保存
-    exit(0);
+    // 可以遍历所有 tab，询问是否保存未保存的文件
+    QMessageBox::StandardButton reply;
+    reply = QMessageBox::question(this, "退出", "有未保存的文件，确定要退出吗？",
+                                  QMessageBox::Yes|QMessageBox::No);
+    if (reply == QMessageBox::Yes) {
+        QApplication::quit();
+    }
 }
 
 void My_IDE::on_copy()
@@ -239,10 +314,10 @@ void My_IDE::on_fontsize()
     if (ok) {
         fontsize = newFontSize;
         m_tabManager->setFontSize(fontsize);
-        on_currentEditorChanged(m_tabManager->currentEditor());
-        QMessageBox::information(this, "设置成功", "设置已生效");
+        on_currentEditorChanged(m_tabManager->currentEditor()); // 刷新当前编辑器的显示
+        // QMessageBox::information(this, "设置成功", "字体大小已更新。"); // 可以选择不弹窗
     } else {
-        QMessageBox::information(this, "取消", "设置已取消");
+        // QMessageBox::information(this, "取消", "字体大小设置已取消。"); // 可以选择不弹窗
     }
 }
 
@@ -261,14 +336,13 @@ void My_IDE::on_closeTab()
     m_tabManager->closeCurrentTab();
 }
 
-// 新增：格式化代码槽函数
 void My_IDE::on_formatCode()
 {
     CodeEditor *currentEditor = m_tabManager->currentEditor();
     if (currentEditor) {
         QString originalCode = currentEditor->toPlainText();
-        QString formattedCode = m_formatter->formatCppCode(originalCode); // 调用 Formatter 进行格式化
-        currentEditor->setPlainText(formattedCode); // 将格式化后的代码设置回编辑器
+        QString formattedCode = m_formatter->formatCppCode(originalCode);
+        currentEditor->setPlainText(formattedCode);
         QMessageBox::information(this, "格式化", "代码已格式化。");
     } else {
         QMessageBox::warning(this, "格式化", "没有打开的文件可供格式化。");
@@ -287,7 +361,7 @@ void My_IDE::on_currentEditorChanged(CodeEditor *editor)
         // 创建更新状态栏的lambda函数
         auto updateStatusBar = [=]() {
             int line = editor->textCursor().blockNumber() + 1;
-            int col = calculateVisualColumn(editor); // 使用新的视觉列计算方法
+            int col = calculateVisualColumn(editor);
             statusBar()->showMessage(QString("行: %1, 列: %2").arg(line).arg(col));
         };
 
@@ -308,6 +382,7 @@ void My_IDE::on_currentEditorChanged(CodeEditor *editor)
         statusBar()->showMessage("没有打开的文件");
         setWindowTitle("My IDE");
     }
+    clearDebugHighlights(); // 当编辑器切换时，清除旧的调试高亮
 }
 
 int My_IDE::calculateVisualColumn(CodeEditor *editor)
@@ -329,7 +404,7 @@ int My_IDE::calculateVisualColumn(CodeEditor *editor)
     int spaceWidth = fm.horizontalAdvance(' ');
 
     // 计算 Tab 大小（以空格数为单位）
-    int tabSize = (spaceWidth > 0) ? qRound(tabStopDistance / spaceWidth) : 4;
+    int tabSize = (spaceWidth > 0) ? qRound(tabStopDistance / spaceWidth) : 4; // 默认4个空格
 
     for (int i = 0; i < text.length(); i++) {
         if (text[i] == '\t') {
@@ -344,83 +419,248 @@ int My_IDE::calculateVisualColumn(CodeEditor *editor)
     return visualColumn + 1; // 列号从 1 开始
 }
 
-// 重写滚轮事件处理函数
 void My_IDE::wheelEvent(QWheelEvent *event)
 {
-    // 检查是否按下了 Ctrl 键
     if (event->modifiers() & Qt::ControlModifier) {
-        int delta = event->angleDelta().y(); // 获取滚轮的滚动量
+        int delta = event->angleDelta().y();
 
-        if (delta > 0) { // 滚轮向上滚动
-            fontsize = qMin(72, fontsize + 2); // 字体大小最大72
-        } else { // 滚轮向下滚动
-            fontsize = qMax(6, fontsize - 2); // 字体大小最小6
+        if (delta > 0) {
+            fontsize = qMin(72, fontsize + 2);
+        } else {
+            fontsize = qMax(6, fontsize - 2);
         }
-        m_tabManager->setFontSize(fontsize); // 更新所有编辑器的字体大小
-        // 重新触发当前编辑器改变的信号，以更新状态栏和窗口标题等
+        m_tabManager->setFontSize(fontsize);
         on_currentEditorChanged(m_tabManager->currentEditor());
-        event->accept(); // 接受事件，表示已处理
+        event->accept();
     } else {
-        // 如果没有按下 Ctrl 键，则调用基类的处理函数
         QMainWindow::wheelEvent(event);
     }
 }
 
 void My_IDE::on_toggleColorMode()
 {
-    // 切换模式状态
     m_isDarkMode = !m_isDarkMode;
-
-    // 应用颜色设置
     applyColorMode(m_isDarkMode);
-
-    // 显示提示
     QString mode = m_isDarkMode ? "深色" : "浅色";
     QMessageBox::information(this, "模式切换", QString("已切换到%1模式").arg(mode));
 }
 
 void My_IDE::applyColorMode(bool darkMode)
 {
-    // 定义黑白两种模式的颜色
-    QString bgColor, textColor, menuColor, statusColor;
+    QString bgColor, textColor, menuColor, statusColor, debugOutputBg, debugOutputText;
 
     if (darkMode) {
-        // 深色模式：黑底白字
-        bgColor = "black";
-        textColor = "white";
-        menuColor = "#333333"; // 深灰色菜单
-        statusColor = "#444444"; // 深灰色状态栏
+        bgColor = "#2b2b2b"; // 深色背景
+        textColor = "#a9b7c6"; // 浅色文本
+        menuColor = "#3c3f41"; // 深灰色菜单
+        statusColor = "#3c3f41"; // 深灰色状态栏
+        debugOutputBg = "#2b2b2b";
+        debugOutputText = "#a9b7c6";
     } else {
-        // 浅色模式：白底黑字
         bgColor = "white";
         textColor = "black";
-        menuColor = "#f0f0f0"; // 浅灰色菜单
-        statusColor = "#e0e0e0"; // 浅灰色状态栏
+        menuColor = "#f0f0f0";
+        statusColor = "#e0e0e0";
+        debugOutputBg = "white";
+        debugOutputText = "black";
     }
 
-    // 应用到所有编辑器
     for (int i = 0; i < m_tabWidget->count(); ++i) {
-        // 假设每个标签页的部件是QPlainTextEdit或其派生类
-        QPlainTextEdit *editor = qobject_cast<QPlainTextEdit*>(m_tabWidget->widget(i));
+        CodeEditor *editor = qobject_cast<CodeEditor*>(m_tabWidget->widget(i));
         if (editor) {
             editor->setStyleSheet(QString("background-color: %1; color: %2;")
                                       .arg(bgColor).arg(textColor));
+            // 重新设置高亮器样式（如果高亮器有自己的颜色设置，需要在这里更新）
+            // 例如：editor->highlighter()->rehighlight();
         }
     }
 
-    // 应用到菜单栏
     menuBar()->setStyleSheet(QString("QMenuBar { background-color: %1; color: %2; }"
                                      "QMenu { background-color: %1; color: %2; }"
                                      "QMenu::item:selected { background-color: #666666; }")
                                  .arg(menuColor).arg(textColor));
 
-    // 应用到状态栏
     statusBar()->setStyleSheet(QString("QStatusBar { background-color: %1; color: %2; }")
                                    .arg(statusColor).arg(textColor));
+
+    if (m_debugOutputWidget) {
+        m_debugOutputWidget->setStyleSheet(QString("background-color: %1; color: %2;")
+                                               .arg(debugOutputBg).arg(debugOutputText));
+    }
 }
 
 My_IDE::~My_IDE()
 {
-    // m_formatter 会自动被删除，因为它是 My_IDE 的成员变量
-    // m_tabWidget 和 m_tabManager 会自动被删除，因为它们有父对象
+    // m_formatter, m_tabWidget, m_tabManager, m_debuggerManager, m_debugOutputWidget
+    // 都会因为有父对象而自动删除，无需手动 delete
+}
+
+// 调试槽函数实现
+void My_IDE::on_debugStart()
+{
+    CodeEditor *currentEditor = m_tabManager->currentEditor();
+    if (!currentEditor) {
+        QMessageBox::warning(this, "调试器", "没有打开的文件。");
+        return;
+    }
+
+    QString currentFilePath = m_tabManager->getCurrentFilePath();
+    if (currentFilePath.isEmpty()) {
+        QMessageBox::warning(this, "调试器", "请先保存文件再开始调试。");
+        return;
+    }
+
+    // 确保文件已编译并生成可执行文件
+    m_tabManager->compileCurrentFile(); // 编译可能会更新文件，所以需要先编译
+
+    QString executablePath = currentFilePath;
+    executablePath.replace(".c", ".exe").replace(".cpp", ".exe"); // 根据编译规则获取可执行文件路径
+
+    if (!QFileInfo(executablePath).exists()) {
+        QMessageBox::warning(this, "调试器", "可执行文件不存在，请先编译。");
+        return;
+    }
+
+    m_debugOutputWidget->clear(); // 清空之前的调试输出
+    m_debuggerManager->startDebugging(executablePath);
+}
+
+void My_IDE::on_debugStop()
+{
+    m_debuggerManager->stopDebugging();
+}
+
+void My_IDE::on_debugContinue()
+{
+    m_debuggerManager->continueExecution();
+}
+
+void My_IDE::on_debugStepInto()
+{
+    m_debuggerManager->stepInto();
+}
+
+void My_IDE::on_debugStepOver()
+{
+    m_debuggerManager->stepOver();
+}
+
+void My_IDE::on_debugStepOut()
+{
+    m_debuggerManager->stepOut();
+}
+
+void My_IDE::on_debugToggleBreakpoint()
+{
+    CodeEditor *currentEditor = m_tabManager->currentEditor();
+    if (!currentEditor) return;
+
+    QString filePath = m_tabManager->getCurrentFilePath();
+    if (filePath.isEmpty()) {
+        QMessageBox::warning(this, "断点", "请先保存文件才能设置断点。");
+        return;
+    }
+
+    int lineNumber = currentEditor->textCursor().blockNumber() + 1; // 当前光标所在行
+
+    m_debuggerManager->toggleBreakpoint(filePath, lineNumber);
+
+    // TODO: 在编辑器中可视化断点（例如，行号区域显示红点）
+    // 这需要 CodeEditor 内部支持行号区域的绘制和管理
+    // QMessageBox::information(this, "断点", QString("在 %1 行切换断点").arg(lineNumber));
+    statusBar()->showMessage(QString("已在 %1 行切换断点").arg(lineNumber));
+}
+
+// DebuggerManager 信号处理槽
+void My_IDE::on_debuggerStarted()
+{
+    statusBar()->showMessage("调试器已启动...");
+    // 启用/禁用相关动作
+    debug_start->setEnabled(false);
+    debug_stop->setEnabled(true);
+    debug_continue->setEnabled(true);
+    debug_stepInto->setEnabled(true);
+    debug_stepOver->setEnabled(true);
+    debug_stepOut->setEnabled(true);
+    debug_toggleBreakpoint->setEnabled(true); // 调试中也可以切换断点
+}
+
+void My_IDE::on_debuggerStopped()
+{
+    statusBar()->showMessage("调试器已停止。");
+    // 启用/禁用相关动作
+    debug_start->setEnabled(true);
+    debug_stop->setEnabled(false);
+    debug_continue->setEnabled(false);
+    debug_stepInto->setEnabled(false);
+    debug_stepOver->setEnabled(false);
+    debug_stepOut->setEnabled(false);
+    debug_toggleBreakpoint->setEnabled(true); // 即使没有调试，也可以设置断点
+    clearDebugHighlights(); // 清除所有调试高亮
+}
+
+void My_IDE::on_hitBreakpoint(const QString &filePath, int lineNumber)
+{
+    statusBar()->showMessage(QString("命中断点于 %1:%2").arg(filePath).arg(lineNumber));
+    highlightDebugLine(filePath, lineNumber); // 高亮当前调试行
+}
+
+void My_IDE::on_currentDebugLineChanged(const QString &filePath, int lineNumber)
+{
+    statusBar()->showMessage(QString("当前执行行于 %1:%2").arg(filePath).arg(lineNumber));
+    highlightDebugLine(filePath, lineNumber); // 高亮当前调试行
+}
+
+void My_IDE::highlightDebugLine(const QString &filePath, int lineNumber)
+{
+    clearDebugHighlights(); // 清除之前的调试高亮
+
+    // 找到对应的 CodeEditor
+    for (int i = 0; i < m_tabWidget->count(); ++i) {
+        CodeEditor *editor = qobject_cast<CodeEditor*>(m_tabWidget->widget(i));
+        // 注意：这里需要 TabWidgetManager 的 m_editorFilePaths 是可访问的
+        // 如果 m_editorFilePaths 是 private，需要通过 TabWidgetManager::getFilePath(CodeEditor*) 访问
+        if (editor && m_tabManager->m_editorFilePaths.value(editor) == filePath) {
+            m_tabWidget->setCurrentIndex(i); // 切换到包含该文件的 Tab
+
+            QTextCharFormat format;
+            // 调试行使用浅蓝色背景高亮，文本颜色不变以保持可读性
+            format.setBackground(QColor("#aaddff")); // 浅蓝色
+            // format.setForeground(Qt::black); // 保持原始文本颜色，或根据模式调整
+
+            QTextCursor cursor = editor->textCursor();
+            // 移动到指定行（行号从1开始，文档块从0开始）
+            cursor.movePosition(QTextCursor::Start);
+            cursor.movePosition(QTextCursor::Down, QTextCursor::MoveAnchor, lineNumber - 1);
+            cursor.select(QTextCursor::LineUnderCursor); // 选中整行
+            cursor.mergeCharFormat(format); // 应用格式
+
+            editor->setTextCursor(cursor); // 更新光标以显示高亮
+            editor->ensureCursorVisible(); // 确保高亮行可见
+            break;
+        }
+    }
+}
+
+void My_IDE::clearDebugHighlights()
+{
+    // 遍历所有编辑器，清除所有高亮
+    for (int i = 0; i < m_tabWidget->count(); ++i) {
+        CodeEditor *editor = qobject_cast<CodeEditor*>(m_tabWidget->widget(i));
+        if (editor) {
+            // 创建一个默认格式，背景透明，前景根据当前模式设置
+            QTextCharFormat defaultFormat;
+            // 根据当前颜色模式设置默认前景色
+            if (m_isDarkMode) {
+                defaultFormat.setForeground(QColor("#a9b7c6")); // 深色模式的文本颜色
+            } else {
+                defaultFormat.setForeground(Qt::black); // 浅色模式的文本颜色
+            }
+            defaultFormat.setBackground(Qt::transparent); // 背景透明
+
+            QTextCursor cursor(editor->document());
+            cursor.select(QTextCursor::Document); // 选中整个文档
+            cursor.setCharFormat(defaultFormat); // 应用默认格式，清除所有特殊格式
+        }
+    }
 }

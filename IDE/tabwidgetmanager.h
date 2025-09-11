@@ -13,6 +13,8 @@ class TabWidgetManager : public QObject
     Q_OBJECT
 
 public:
+    QMap<CodeEditor*, QString> m_editorFilePaths; // 存储 CodeEditor 及其对应的文件路径
+
     explicit TabWidgetManager(QTabWidget *tabWidget, QObject *parent = nullptr);
     ~TabWidgetManager();
 
@@ -50,7 +52,7 @@ private slots:
 
 private:
     QTabWidget *m_tabWidget;
-    QMap<CodeEditor*, QString> m_editorFilePaths; // 存储 CodeEditor 及其对应的文件路径
+
 
     // 辅助函数，用于初始化新的 CodeEditor
     void initializeEditor(CodeEditor *editor);

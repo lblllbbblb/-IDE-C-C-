@@ -9,9 +9,11 @@
 #include <QDir>
 #include <QInputDialog>
 #include <QTabWidget>
+#include <QTextEdit> // 新增：用于调试输出
 #include "TabWidgetManager.h"
+#include "DebuggerManager.h" // 新增：包含 DebuggerManager 头文件
 #include <QWheelEvent>
-#include "Formatter.h" // 新增：包含 Formatter 头文件
+#include "Formatter.h"
 
 class My_IDE : public QMainWindow
 {
@@ -19,11 +21,13 @@ class My_IDE : public QMainWindow
 private:
     QTabWidget *m_tabWidget;
     TabWidgetManager *m_tabManager;
-    Formatter *m_formatter; // 新增：Formatter 类的实例
+    DebuggerManager *m_debuggerManager; // 新增：DebuggerManager 实例
+    Formatter *m_formatter;
 
     QMenu *file;
     QMenu *edit;
     QMenu *build;
+    QMenu *debug; // 新增：调试菜单
     QMenu *help;
     QMenu *settings;
 
@@ -38,6 +42,15 @@ private:
     QAction *build_run;
     QAction *build_compileAndRun;
 
+    // 新增：调试动作
+    QAction *debug_start;
+    QAction *debug_stop;
+    QAction *debug_continue;
+    QAction *debug_stepInto;
+    QAction *debug_stepOver;
+    QAction *debug_stepOut;
+    QAction *debug_toggleBreakpoint; // 切换断点
+
     QAction *help_about;
 
     QAction *edit_copy;
@@ -45,21 +58,24 @@ private:
     QAction *edit_cut;
     QAction *edit_selectAll;
     QAction *edit_findReplace;
-    QAction *edit_formatCode; // 新增：格式化代码动作
+    QAction *edit_formatCode;
 
     QAction *settings_fontsize;
 
     QAction *edit_undo;
     QAction *edit_redo;
-    CodeEditor *editor;
+    CodeEditor *editor; // 这里可能需要移除，因为 currentEditor() 才是当前的
 
     int fontsize;
 
     bool m_isDarkMode;
     QAction *settings_toggleColor;
 
+    QTextEdit *m_debugOutputWidget; // 新增：用于显示调试器输出的文本框
+
     void initMenuSystem();
     void connectActions();
+    void setupDebuggerUI(); // 新增：设置调试器UI
 
 protected:
     void wheelEvent(QWheelEvent *event) override;
@@ -87,12 +103,32 @@ private slots:
     void on_undo();
     void on_redo();
     void on_closeTab();
-    void on_formatCode(); // 新增：格式化代码槽函数
+    void on_formatCode();
 
     void on_currentEditorChanged(CodeEditor *editor);
     int calculateVisualColumn(CodeEditor *editor);
 
     void on_toggleColorMode();
     void applyColorMode(bool darkMode);
+
+    // 新增：调试槽函数
+    void on_debugStart();
+    void on_debugStop();
+    void on_debugContinue();
+    void on_debugStepInto();
+    void on_debugStepOver();
+    void on_debugStepOut();
+    void on_debugToggleBreakpoint();
+
+    // 调试器信号处理槽
+    void on_debuggerStarted();
+    void on_debuggerStopped();
+    void on_hitBreakpoint(const QString &filePath, int lineNumber);
+    void on_currentDebugLineChanged(const QString &filePath, int lineNumber);
+
+    // 标记当前调试行
+    void highlightDebugLine(const QString &filePath, int lineNumber);
+    // 清除所有调试标记
+    void clearDebugHighlights();
 };
 #endif // MY_IDE_H
