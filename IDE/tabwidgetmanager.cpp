@@ -14,22 +14,31 @@ TabWidgetManager::TabWidgetManager(QTabWidget *tabWidget, QObject *parent)
     connect(m_tabWidget, &QTabWidget::currentChanged, this, [this](int index){
         if (index != -1) {
             emit currentEditorChanged(currentEditor());
+            // 当 Tab 切换时，刷新当前编辑器的颜色
+            if (currentEditor()) {
+                m_colorRefresher->refreshDocumentColors(currentEditor()->document());
+            }
         } else {
             emit currentEditorChanged(nullptr); // 没有打开的编辑器
         }
     });
+
+    // 初始化 ColorRefresher
+    m_colorRefresher = new ColorRefresher(this);
 }
 
 TabWidgetManager::~TabWidgetManager()
 {
     // QTabWidget 会自动删除其子部件，m_editorFilePaths 中的 CodeEditor 无需手动删除
+    // m_colorRefresher 会因为是 TabWidgetManager 的子对象而自动删除
 }
 
 void TabWidgetManager::initializeEditor(CodeEditor *editor)
 {
     editor->setFont(QFont("Consolas", 12));
     editor->setLineWrapMode(QPlainTextEdit::NoWrap);
-    new CppHighlighter(editor->document()); // 为每个编辑器创建高亮器
+    // 为每个编辑器创建高亮器。注意，这里我们将 CppHighlighter 的父对象设置为 editor->document()
+    new CppHighlighter(editor->document());
     new BracketMatcher(editor, this);       // 为每个编辑器创建括号匹配器
     // FindReplaceDialog 不需要为每个编辑器创建，它会操作当前活动的编辑器
 }
@@ -41,6 +50,8 @@ CodeEditor* TabWidgetManager::newFile()
     int index = m_tabWidget->addTab(editor, "untitled.c");
     m_tabWidget->setCurrentIndex(index);
     m_editorFilePaths[editor] = ""; // 新文件没有路径
+    // 新文件创建后立即刷新颜色
+    m_colorRefresher->refreshDocumentColors(editor->document());
     return editor;
 }
 
@@ -52,6 +63,8 @@ CodeEditor* TabWidgetManager::openFile(const QString &filePath)
             int index = m_tabWidget->indexOf(it.key());
             if (index != -1) {
                 m_tabWidget->setCurrentIndex(index);
+                // 如果文件已打开并切换到该 Tab，也刷新颜色
+                m_colorRefresher->refreshDocumentColors(it.key()->document());
                 return it.key();
             }
         }
@@ -73,9 +86,12 @@ CodeEditor* TabWidgetManager::openFile(const QString &filePath)
     int index = m_tabWidget->addTab(editor, fileInfo.fileName());
     m_tabWidget->setCurrentIndex(index);
     m_editorFilePaths[editor] = filePath;
+    // 文件打开后立即刷新颜色
+    m_colorRefresher->refreshDocumentColors(editor->document());
     return editor;
 }
 
+// ... 你的其他 TabWidgetManager 方法保持不变 ...
 CodeEditor* TabWidgetManager::currentEditor() const
 {
     return qobject_cast<CodeEditor*>(m_tabWidget->currentWidget());

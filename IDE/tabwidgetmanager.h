@@ -6,7 +6,8 @@
 #include "CodeEditor.h"
 #include "cpphighlighter.h"
 #include "bracketmatcher.h"
-#include "findreplacedialog.h" // 可能需要查找替换对话框的引用
+#include "findreplacedialog.h"
+#include "colorrefresher.h" // 新增：包含 ColorRefresher 头文件
 
 class TabWidgetManager : public QObject
 {
@@ -52,6 +53,8 @@ private slots:
 
 private:
     QTabWidget *m_tabWidget;
+    // 新增：ColorRefresher 实例
+    ColorRefresher *m_colorRefresher;
 
 
     // 辅助函数，用于初始化新的 CodeEditor

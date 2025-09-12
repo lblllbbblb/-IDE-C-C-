@@ -686,3 +686,11 @@ void My_IDE::clearDebugHighlights()
         }
     }
 }
+// ... 你的 CppHighlighter.cpp 其他代码保持不变 ...
+
+void CppHighlighter::rehighlight()
+{
+    QSyntaxHighlighter::rehighlight(); // 调用基类的 rehighlight 方法
+}
+
+// ... 你的 CppHighlighter.cpp 其他代码保持不变 ...

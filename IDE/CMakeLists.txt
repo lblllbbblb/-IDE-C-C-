@@ -38,6 +38,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         Resources.qrc
         debuggermanager.h debuggermanager.cpp
         breakpointmanager.h breakpointmanager.cpp
+        colorrefresher.h colorrefresher.cpp
 
 
 

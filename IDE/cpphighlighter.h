@@ -12,6 +12,9 @@ class CppHighlighter : public QSyntaxHighlighter
 public:
     CppHighlighter(QTextDocument *parent = nullptr);
 
+    // 新增：提供一个公共方法来重新高亮整个文档
+    void rehighlight();
+
 protected:
     void highlightBlock(const QString &text) override;
 
@@ -38,8 +41,6 @@ private:
     QTextCharFormat scopeResolutionFormat;
     QTextCharFormat standardTypeFormat;
     QTextCharFormat variableFormat;
-
-
 };
 
 #endif // CPPHIGHLIGHTER_H
