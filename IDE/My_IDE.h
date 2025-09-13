@@ -1,3 +1,4 @@
+// MY_IDE_H
 #ifndef MY_IDE_H
 #define MY_IDE_H
 
@@ -9,11 +10,12 @@
 #include <QDir>
 #include <QInputDialog>
 #include <QTabWidget>
-#include <QTextEdit> // 新增：用于调试输出
+#include <QTextEdit>
 #include "TabWidgetManager.h"
-#include "DebuggerManager.h" // 新增：包含 DebuggerManager 头文件
+#include "DebuggerManager.h"
 #include <QWheelEvent>
 #include "Formatter.h"
+#include "DeepSeekChat.h"
 
 class My_IDE : public QMainWindow
 {
@@ -21,15 +23,18 @@ class My_IDE : public QMainWindow
 private:
     QTabWidget *m_tabWidget;
     TabWidgetManager *m_tabManager;
-    DebuggerManager *m_debuggerManager; // 新增：DebuggerManager 实例
+    DebuggerManager *m_debuggerManager;
     Formatter *m_formatter;
 
     QMenu *file;
     QMenu *edit;
     QMenu *build;
-    QMenu *debug; // 新增：调试菜单
+    QMenu *debug;
     QMenu *help;
     QMenu *settings;
+
+    QMenu *aiAssistant;
+    QAction *aiAssistant_deepSeekChat;
 
     QAction *file_new;
     QAction *file_open;
@@ -42,14 +47,13 @@ private:
     QAction *build_run;
     QAction *build_compileAndRun;
 
-    // 新增：调试动作
     QAction *debug_start;
     QAction *debug_stop;
     QAction *debug_continue;
     QAction *debug_stepInto;
     QAction *debug_stepOver;
     QAction *debug_stepOut;
-    QAction *debug_toggleBreakpoint; // 切换断点
+    QAction *debug_toggleBreakpoint;
 
     QAction *help_about;
 
@@ -64,18 +68,18 @@ private:
 
     QAction *edit_undo;
     QAction *edit_redo;
-    CodeEditor *editor; // 这里可能需要移除，因为 currentEditor() 才是当前的
+    CodeEditor *editor;
 
     int fontsize;
 
     bool m_isDarkMode;
     QAction *settings_toggleColor;
 
-    QTextEdit *m_debugOutputWidget; // 新增：用于显示调试器输出的文本框
+    QTextEdit *m_debugOutputWidget;
 
     void initMenuSystem();
     void connectActions();
-    void setupDebuggerUI(); // 新增：设置调试器UI
+    void setupDebuggerUI();
 
 protected:
     void wheelEvent(QWheelEvent *event) override;
@@ -111,7 +115,7 @@ private slots:
     void on_toggleColorMode();
     void applyColorMode(bool darkMode);
 
-    // 新增：调试槽函数
+    // Debugging slots
     void on_debugStart();
     void on_debugStop();
     void on_debugContinue();
@@ -120,15 +124,17 @@ private slots:
     void on_debugStepOut();
     void on_debugToggleBreakpoint();
 
-    // 调试器信号处理槽
+    // DebuggerManager signal handling slots
     void on_debuggerStarted();
     void on_debuggerStopped();
     void on_hitBreakpoint(const QString &filePath, int lineNumber);
     void on_currentDebugLineChanged(const QString &filePath, int lineNumber);
 
-    // 标记当前调试行
+    // Debugging line highlighting
     void highlightDebugLine(const QString &filePath, int lineNumber);
-    // 清除所有调试标记
     void clearDebugHighlights();
+
+    // Add this line: Declaration for the DeepSeekChat slot
+    void on_deepSeekChat();
 };
 #endif // MY_IDE_H

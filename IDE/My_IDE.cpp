@@ -172,6 +172,12 @@ void My_IDE::initMenuSystem()
     help_about->setShortcut(tr("Ctrl+H"));
     help->addAction(help_about);
 
+    // 新增：AI 助手菜单
+    aiAssistant = menuBar()->addMenu("AI 助手");
+    aiAssistant_deepSeekChat = new QAction("DeepSeek AI 聊天", this);
+    aiAssistant_deepSeekChat->setShortcut(tr("Ctrl+Shift+D")); // 快捷键示例
+    aiAssistant->addAction(aiAssistant_deepSeekChat);
+
     // 连接所有信号槽
     connectActions();
 }
@@ -219,6 +225,9 @@ void My_IDE::connectActions()
 
     // 连接颜色模式切换动作
     connect(settings_toggleColor, &QAction::triggered, this, &My_IDE::on_toggleColorMode);
+
+    // 新增：AI 助手操作
+    connect(aiAssistant_deepSeekChat, &QAction::triggered, this, &My_IDE::on_deepSeekChat);
 }
 
 void My_IDE::on_new()
@@ -694,3 +703,11 @@ void CppHighlighter::rehighlight()
 }
 
 // ... 你的 CppHighlighter.cpp 其他代码保持不变 ...
+
+// 新增：DeepSeek AI 聊天槽函数
+void My_IDE::on_deepSeekChat()
+{
+    DeepSeekChatDialog *dialog = new DeepSeekChatDialog(this); // 创建 DeepSeekChatDialog 实例
+    dialog->setAttribute(Qt::WA_DeleteOnClose); // 设置在关闭时自动删除对话框
+    dialog->show(); // 显示对话框
+}
