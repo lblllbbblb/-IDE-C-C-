@@ -697,17 +697,101 @@ void My_IDE::clearDebugHighlights()
 }
 // ... 你的 CppHighlighter.cpp 其他代码保持不变 ...
 
-void CppHighlighter::rehighlight()
-{
-    QSyntaxHighlighter::rehighlight(); // 调用基类的 rehighlight 方法
-}
+// CppHighlighter 相关的代码通常在 CppHighlighter.cpp 中，这里只是一个占位符。
+// 如果 CppHighlighter::rehighlight() 是 My_IDE 的一部分，它应该在这里。
+// 假设 CppHighlighter 是一个独立的类，其 rehighlight 方法已在 CppHighlighter.cpp 中实现。
+// void CppHighlighter::rehighlight()
+// {
+//     QSyntaxHighlighter::rehighlight(); // 调用基类的 rehighlight 方法
+// }
 
-// ... 你的 CppHighlighter.cpp 其他代码保持不变 ...
 
 // 新增：DeepSeek AI 聊天槽函数
 void My_IDE::on_deepSeekChat()
 {
-    DeepSeekChatDialog *dialog = new DeepSeekChatDialog(this); // 创建 DeepSeekChatDialog 实例
+    CodeEditor *currentEditor = m_tabManager->currentEditor();
+    QString currentFilePath = m_tabManager->getCurrentFilePath();
+    QString editorContent;
+    QString selectedCode;
+    int cursorLine = -1;
+    int cursorCol = -1;
+    int selectionStartLine = -1;
+    int selectionEndLine = -1;
+
+    if (currentEditor) {
+        editorContent = currentEditor->toPlainText();
+        QTextCursor cursor = currentEditor->textCursor();
+        selectedCode = cursor.selectedText();
+
+        cursorLine = cursor.blockNumber() + 1;
+        cursorCol = calculateVisualColumn(currentEditor); // 使用已有的函数计算列
+
+        if (cursor.hasSelection()) {
+            selectionStartLine = currentEditor->document()->findBlock(cursor.selectionStart()).blockNumber() + 1;
+            selectionEndLine = currentEditor->document()->findBlock(cursor.selectionEnd()).blockNumber() + 1;
+            if (cursor.selectionEnd() == cursor.block().position() + cursor.block().length()) {
+                // 如果选择包含行尾，并且光标在下一行的开头，那么selectionEndLine会多算一行。
+                // 确保selectionEndLine是实际选择的最后一行。
+                if (cursor.selectionEnd() > cursor.selectionStart() && cursor.document()->characterAt(cursor.selectionEnd() - 1) == '\n') {
+                    selectionEndLine--;
+                }
+            }
+        }
+    }
+
+    // 创建 DeepSeekChatDialog 实例，并传递上下文信息
+    DeepSeekChatDialog *dialog = new DeepSeekChatDialog(
+        this,
+        currentFilePath,
+        editorContent,
+        selectedCode,
+        cursorLine,
+        cursorCol,
+        selectionStartLine,
+        selectionEndLine
+        );
+
+    // 连接 DeepSeekChatDialog 的信号到 My_IDE 的槽
+    connect(dialog, &DeepSeekChatDialog::insertCodeRequested, this, &My_IDE::insertCodeToCurrentEditor);
+
     dialog->setAttribute(Qt::WA_DeleteOnClose); // 设置在关闭时自动删除对话框
     dialog->show(); // 显示对话框
+}
+
+// 新增：接收 DeepSeekChatDialog 传回的代码并插入到当前编辑器
+void My_IDE::insertCodeToCurrentEditor(const QString &code, int startLine, int endLine)
+{
+    CodeEditor *currentEditor = m_tabManager->currentEditor();
+    if (!currentEditor) {
+        QMessageBox::warning(this, "插入代码", "没有打开的编辑器来插入代码。");
+        return;
+    }
+
+    QTextCursor cursor = currentEditor->textCursor();
+    cursor.beginEditBlock(); // 开始编辑块，以便于撤销/重做
+
+    // 如果提供了行范围，则替换该范围内的代码
+    if (startLine >= 1 && endLine >= startLine) {
+        // 移动到起始行的开头
+        cursor.movePosition(QTextCursor::Start);
+        cursor.movePosition(QTextCursor::Down, QTextCursor::MoveAnchor, startLine - 1);
+        int startPos = cursor.position();
+
+        // 移动到结束行的末尾
+        cursor.movePosition(QTextCursor::Start);
+        cursor.movePosition(QTextCursor::Down, QTextCursor::MoveAnchor, endLine - 1);
+        cursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
+        int endPos = cursor.position();
+
+        // 选中并替换
+        cursor.setPosition(startPos);
+        cursor.setPosition(endPos, QTextCursor::KeepAnchor);
+        cursor.insertText(code);
+    } else {
+        // 否则，在当前光标位置插入代码
+        cursor.insertText(code);
+    }
+
+    cursor.endEditBlock(); // 结束编辑块
+    QMessageBox::information(this, "插入代码", "AI 生成的代码已插入。");
 }

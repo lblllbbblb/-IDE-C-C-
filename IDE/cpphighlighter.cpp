@@ -72,11 +72,11 @@ CppHighlighter::CppHighlighter(QTextDocument *parent)
     rule.format = functionFormat;
     highlightingRules.append(rule);
 
-    // 10. 命名空间 (Namespaces)
-    namespaceFormat.setForeground(QColor("#800080")); // 紫色
-    rule.pattern = QRegularExpression("\\bstd\\b");
-    rule.format = namespaceFormat;
-    highlightingRules.append(rule);
+    // 10. 命名空间 (Namespaces) - 冗余定义，请删除或合并
+    // namespaceFormat.setForeground(QColor("#800080")); // 紫色
+    // rule.pattern = QRegularExpression("\\bstd\\b");
+    // rule.format = namespaceFormat;
+    // highlightingRules.append(rule);
 
     // 8. 单行注释 (Single-line Comments)
     commentFormat.setForeground(QColor("#A8ABB0")); // 灰色
@@ -85,13 +85,12 @@ CppHighlighter::CppHighlighter(QTextDocument *parent)
     rule.format = commentFormat;
     highlightingRules.append(rule);
 
-    // 9. 多行注释 (Multi-line CommenAts)
+    // 9. 多行注释 (Multi-line Comments)
     commentStartExpression = QRegularExpression("/\\*");
     commentEndExpression = QRegularExpression("\\*/");
 
 
-
-    // 10. 命名空间 (Namespaces)
+    // 10. 命名空间 (Namespaces) - 合并到这里，如果上面有重复定义，请删除
     namespaceFormat.setForeground(QColor("#800080")); // 紫色
     rule.pattern = QRegularExpression("\\bstd\\b");
     rule.format = namespaceFormat;
@@ -115,15 +114,15 @@ CppHighlighter::CppHighlighter(QTextDocument *parent)
                          << "\\bfunction\\b" << "\\boptional\\b" << "\\bvariant\\b"
                          << "\\bany\\b" << "\\bbitset\\b" << "\\bcomplex\\b"
                          << "\\bvalarray\\b" // 添加更多标准库类型
-                        // 添加流操纵符
-                        << "\\bendl\\b" << "\\bends\\b" << "\\bflush\\b"
-                        << "\\bws\\b" << "\\bboolalpha\\b" << "\\bnoboolalpha\\b"
-                        << "\\bshowbase\\b" << "\\bnoshowbase\\b" << "\\bshowpoint\\b"
-                        << "\\bnoshowpoint\\b" << "\\bshowpos\\b" << "\\bnoshowpos\\b"
-                        << "\\bskipws\\b" << "\\bnoskipws\\b" << "\\buppercase\\b"
-                        << "\\bnouppercase\\b" << "\\bhex\\b" << "\\boct\\b"
-                        << "\\bdec\\b" << "\\bfixed\\b" << "\\bscientific\\b"
-                        << "\\bhexfloat\\b" << "\\bdefaultfloat\\b";
+                         // 添加流操纵符
+                         << "\\bendl\\b" << "\\bends\\b" << "\\bflush\\b"
+                         << "\\bws\\b" << "\\bboolalpha\\b" << "\\bnoboolalpha\\b"
+                         << "\\bshowbase\\b" << "\\bnoshowbase\\b" << "\\bshowpoint\\b"
+                         << "\\bnoshowpoint\\b" << "\\bshowpos\\b" << "\\bnoshowpos\\b"
+                         << "\\bskipws\\b" << "\\bnoskipws\\b" << "\\buppercase\\b"
+                         << "\\bnouppercase\\b" << "\\bhex\\b" << "\\boct\\b"
+                         << "\\bdec\\b" << "\\bfixed\\b" << "\\bscientific\\b"
+                         << "\\bhexfloat\\b" << "\\bdefaultfloat\\b";
     for (const QString &pattern : standardTypePatterns) {
         rule.pattern = QRegularExpression(pattern);
         rule.format = standardTypeFormat;
@@ -144,6 +143,13 @@ CppHighlighter::CppHighlighter(QTextDocument *parent)
                                       "<[^>]+>"); // 匹配 "..." 和 '...'、<...>
     rule.format = stringFormat;
     highlightingRules.append(rule);
+}
+
+// 缺失的 rehighlight() 方法实现，现在添加它
+void CppHighlighter::rehighlight()
+{
+    // 调用基类的 rehighlight() 方法来触发整个文档的重新高亮
+    QSyntaxHighlighter::rehighlight();
 }
 
 void CppHighlighter::highlightBlock(const QString &text)
@@ -178,4 +184,3 @@ void CppHighlighter::highlightBlock(const QString &text)
         startIndex = text.indexOf(commentStartExpression, startIndex + commentLength); // 继续寻找下一个多行注释
     }
 }
-

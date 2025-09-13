@@ -15,7 +15,9 @@
 #include "DebuggerManager.h"
 #include <QWheelEvent>
 #include "Formatter.h"
-#include "DeepSeekChat.h"
+#include "DeepSeekChat.h" // 确保包含 DeepSeekChat 的头文件
+#include "CodeEditor.h" // 确保包含 CodeEditor 的头文件
+#include "ColorRefresher.h" // 新增：包含 ColorRefresher 头文件
 
 class My_IDE : public QMainWindow
 {
@@ -68,7 +70,8 @@ private:
 
     QAction *edit_undo;
     QAction *edit_redo;
-    CodeEditor *editor;
+    CodeEditor *editor; // 这个 'editor' 成员变量实际上是当前活跃的 CodeEditor，需要确保它始终指向正确
+    // 为了避免混淆，我们使用 m_tabManager->currentEditor() 来获取当前编辑器
 
     int fontsize;
 
@@ -136,5 +139,8 @@ private slots:
 
     // Add this line: Declaration for the DeepSeekChat slot
     void on_deepSeekChat();
+
+    // 新增：用于接收 DeepSeekChatDialog 传回的代码并插入到当前编辑器
+    void insertCodeToCurrentEditor(const QString &code, int startLine, int endLine);
 };
 #endif // MY_IDE_H

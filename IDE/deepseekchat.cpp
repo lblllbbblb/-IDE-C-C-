@@ -4,11 +4,31 @@
 #include <QMessageBox>
 #include <QInputDialog> // 用于获取 API 密钥
 #include <QDebug> // 用于调试输出
+#include <QFile>    // 用于文件操作
+#include <QFileDialog> // 用于文件对话框
+#include <QTextStream> // 用于读写文件
+#include <QFrame> // 【修复】新增：用于模拟分隔线
 
-DeepSeekChatDialog::DeepSeekChatDialog(QWidget *parent)
+DeepSeekChatDialog::DeepSeekChatDialog(
+    QWidget *parent,
+    const QString &currentFilePath,
+    const QString &editorContent,
+    const QString &selectedCode,
+    int cursorLine,
+    int cursorCol,
+    int selectionStartLine,
+    int selectionEndLine
+    )
     : QDialog(parent),
     m_networkManager(new QNetworkAccessManager(this)), // 初始化网络访问管理器
-    m_apiUrl("https://api.deepseek.com/chat/completions") // DeepSeek API 的聊天完成接口 URL
+    m_apiUrl("https://api.deepseek.com/chat/completions"), // DeepSeek API 的聊天完成接口 URL
+    m_currentFilePath(currentFilePath),
+    m_editorContent(editorContent),
+    m_selectedCode(selectedCode),
+    m_cursorLine(cursorLine),
+    m_cursorCol(cursorCol),
+    m_selectionStartLine(selectionStartLine),
+    m_selectionEndLine(selectionEndLine)
 {
     setWindowTitle("DeepSeek AI 助手"); // 设置对话框标题
     setWindowIcon(QIcon(":/icons/deepseek.png")); // 设置对话框图标，你需要添加一个 deepseek.png 到资源文件
@@ -42,11 +62,46 @@ DeepSeekChatDialog::DeepSeekChatDialog(QWidget *parent)
     m_toggleApiKeyButton->setCheckable(true); // 使按钮可切换状态
     m_toggleApiKeyButton->setStyleSheet("padding: 5px; border: 1px solid #ccc;");
 
+    // 新增 UI 元素
+    m_fileContentDisplay = new QTextEdit(this);
+    m_fileContentDisplay->setReadOnly(true);
+    m_fileContentDisplay->setPlaceholderText("当前文件内容或加载的文件内容将显示在此处...");
+    m_fileContentDisplay->setStyleSheet("background-color: #e0e0e0; border: 1px solid #aaa; padding: 5px;");
+    // 显示当前编辑器的内容
+    if (!m_editorContent.isEmpty()) {
+        m_fileContentDisplay->setPlainText(m_editorContent);
+    } else if (!m_currentFilePath.isEmpty()) {
+        m_fileContentDisplay->setPlainText(QString("文件路径: %1\n\n文件内容加载失败或为空。").arg(m_currentFilePath));
+    } else {
+        m_fileContentDisplay->setPlainText("没有当前打开的文件内容。");
+    }
+
+
+    m_responseCodeDisplay = new QTextEdit(this);
+    m_responseCodeDisplay->setReadOnly(true);
+    m_responseCodeDisplay->setPlaceholderText("AI 生成的代码片段将显示在此处...");
+    m_responseCodeDisplay->setStyleSheet("background-color: #d0d0d0; border: 1px solid #888; padding: 5px;");
+
+    m_insertCodeButton = new QPushButton("插入代码到编辑器", this);
+    m_insertCodeButton->setStyleSheet("background-color: #28a745; color: white; padding: 8px 15px; border-radius: 5px;");
+    m_insertCodeButton->setEnabled(false); // 初始禁用，只有当有代码生成时才启用
+
+    m_saveFileButton = new QPushButton("保存为新文件", this);
+    m_saveFileButton->setStyleSheet("background-color: #ffc107; color: black; padding: 8px 15px; border-radius: 5px;");
+    m_saveFileButton->setEnabled(false); // 初始禁用
+
+    m_fileOperationsComboBox = new QComboBox(this);
+    m_fileOperationsComboBox->addItem("文件操作...");
+    m_fileOperationsComboBox->addItem("加载本地文件...");
+    m_fileOperationsComboBox->addItem("保存 AI 生成内容为...");
+    m_fileOperationsComboBox->setCurrentIndex(0); // 默认选中提示项
 
     // 布局管理
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
     QHBoxLayout *inputLayout = new QHBoxLayout();
     QHBoxLayout *apiKeyLayout = new QHBoxLayout(); // API 密钥布局
+    QHBoxLayout *responseControlsLayout = new QHBoxLayout(); // 响应代码控制布局
+    // QHBoxLayout *fileControlsLayout = new QHBoxLayout(); // 文件操作控制布局 // 这一行似乎是多余的，因为文件操作ComboBox已经放在responseControlsLayout里了
 
     inputLayout->addWidget(m_messageInput);
     inputLayout->addWidget(m_sendButton);
@@ -55,10 +110,34 @@ DeepSeekChatDialog::DeepSeekChatDialog(QWidget *parent)
     apiKeyLayout->addWidget(m_toggleApiKeyButton);
     apiKeyLayout->addWidget(m_setApiKeyButton); // 将设置API密钥按钮也放在这一行
 
+    responseControlsLayout->addWidget(m_insertCodeButton);
+    responseControlsLayout->addWidget(m_saveFileButton);
+    responseControlsLayout->addWidget(m_fileOperationsComboBox);
+
     mainLayout->addWidget(m_chatDisplay);
     mainLayout->addLayout(inputLayout);
     mainLayout->addLayout(apiKeyLayout);
     mainLayout->addWidget(m_statusLabel); // 添加状态标签
+
+    // 【修复】使用 QFrame 模拟分隔线
+    QFrame *separator1 = new QFrame(this);
+    separator1->setFrameShape(QFrame::HLine);
+    separator1->setFrameShadow(QFrame::Sunken);
+    mainLayout->addWidget(separator1);
+
+    mainLayout->addWidget(new QLabel("当前文件/加载的文件内容:", this));
+    mainLayout->addWidget(m_fileContentDisplay);
+
+    // 【修复】使用 QFrame 模拟分隔线
+    QFrame *separator2 = new QFrame(this);
+    separator2->setFrameShape(QFrame::HLine);
+    separator2->setFrameShadow(QFrame::Sunken);
+    mainLayout->addWidget(separator2);
+
+    mainLayout->addWidget(new QLabel("AI 生成的代码/文件内容:", this));
+    mainLayout->addWidget(m_responseCodeDisplay);
+    mainLayout->addLayout(responseControlsLayout);
+
 
     // 连接信号和槽
     connect(m_sendButton, &QPushButton::clicked, this, &DeepSeekChatDialog::sendMessage);
@@ -66,6 +145,12 @@ DeepSeekChatDialog::DeepSeekChatDialog(QWidget *parent)
     connect(m_networkManager, &QNetworkAccessManager::finished, this, &DeepSeekChatDialog::handleNetworkReply);
     connect(m_setApiKeyButton, &QPushButton::clicked, this, &DeepSeekChatDialog::setApiKey);
     connect(m_toggleApiKeyButton, &QPushButton::toggled, this, &DeepSeekChatDialog::toggleApiKeyVisibility);
+
+    // 新增：文件操作和代码插入的连接
+    connect(m_insertCodeButton, &QPushButton::clicked, this, &DeepSeekChatDialog::insertCodeFromResponse);
+    connect(m_saveFileButton, &QPushButton::clicked, this, &DeepSeekChatDialog::saveFileContent);
+    connect(m_fileOperationsComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &DeepSeekChatDialog::handleFileOperation);
+
 
     // 加载之前保存的 API 密钥
     loadApiKey();
@@ -163,6 +248,8 @@ void DeepSeekChatDialog::handleNetworkReply(QNetworkReply *reply)
                 QString errorMessage = errorObj["message"].toString();
                 appendMessage("DeepSeek (错误)", errorMessage);
                 qWarning() << "DeepSeek API Error:" << errorMessage;
+                m_insertCodeButton->setEnabled(false);
+                m_saveFileButton->setEnabled(false);
             } else if (jsonObj.contains("choices") && jsonObj["choices"].isArray()) {
                 QJsonArray choices = jsonObj["choices"].toArray();
                 if (!choices.isEmpty()) {
@@ -172,21 +259,46 @@ void DeepSeekChatDialog::handleNetworkReply(QNetworkReply *reply)
                         if (messageObj.contains("content")) {
                             QString assistantResponse = messageObj["content"].toString();
                             appendMessage("DeepSeek AI", assistantResponse); // 在聊天显示区添加 AI 回复
+
+                            // 提取代码片段并显示在 m_responseCodeDisplay
+                            // 这里可以更智能地解析，例如查找 Markdown 代码块
+                            // 简单示例：直接将整个响应显示为代码，或提取第一个```代码块
+                            // 【修复】使用 QRegularExpression 替代 QRegExp
+                            QRegularExpression codeBlockRegex("```[a-zA-Z]*\\n([\\s\\S]*?)\\n```");
+                            QRegularExpressionMatch match = codeBlockRegex.match(assistantResponse);
+
+                            if (match.hasMatch()) { // 【修复】检查是否有匹配
+                                QString code = match.captured(1).trimmed(); // 【修复】捕获第一个括号内的内容
+                                m_responseCodeDisplay->setPlainText(code);
+                                m_insertCodeButton->setEnabled(true);
+                                m_saveFileButton->setEnabled(true);
+                            } else {
+                                // 如果没有代码块，显示整个响应
+                                m_responseCodeDisplay->setPlainText(assistantResponse);
+                                m_insertCodeButton->setEnabled(true); // 即使不是代码块，也允许插入
+                                m_saveFileButton->setEnabled(true);
+                            }
                         }
                     }
                 }
             } else {
                 appendMessage("DeepSeek (解析错误)", "无法从响应中解析出有效内容。");
                 qWarning() << "Failed to parse DeepSeek response:" << responseData;
+                m_insertCodeButton->setEnabled(false);
+                m_saveFileButton->setEnabled(false);
             }
         } else {
             appendMessage("DeepSeek (JSON 错误)", "DeepSeek API 返回的不是有效的 JSON 对象。");
             qWarning() << "DeepSeek API response is not a JSON object:" << responseData;
+            m_insertCodeButton->setEnabled(false);
+            m_saveFileButton->setEnabled(false);
         }
     } else {
         // 处理网络错误
         appendMessage("DeepSeek (网络错误)", reply->errorString());
         qWarning() << "Network Error:" << reply->errorString();
+        m_insertCodeButton->setEnabled(false);
+        m_saveFileButton->setEnabled(false);
     }
     reply->deleteLater(); // 释放 QNetworkReply 对象
 }
@@ -211,20 +323,156 @@ void DeepSeekChatDialog::appendMessage(const QString &sender, const QString &mes
     m_chatDisplay->setTextCursor(cursor);
 }
 
-QByteArray DeepSeekChatDialog::buildRequestJson(const QString &message)
+QByteArray DeepSeekChatDialog::buildRequestJson(const QString &userMessage)
 {
-    QJsonObject messageObj;
-    messageObj["role"] = "user"; // 消息角色为用户
-    messageObj["content"] = message; // 消息内容
-
     QJsonArray messagesArray;
-    messagesArray.append(messageObj); // 将用户消息添加到消息数组
+
+    // 添加系统消息，提供上下文信息
+    QString contextMessage = "你是一个C/C++编程助手。";
+    if (!m_currentFilePath.isEmpty()) {
+        contextMessage += QString("当前文件路径: %1. ").arg(m_currentFilePath);
+    }
+    if (!m_editorContent.isEmpty()) {
+        contextMessage += "当前文件内容:\n```cpp\n" + m_editorContent + "\n```\n";
+    }
+    if (!m_selectedCode.isEmpty()) {
+        contextMessage += QString("当前选中代码 (行 %1-%2):\n```cpp\n%3\n```\n")
+                              .arg(m_selectionStartLine).arg(m_selectionEndLine).arg(m_selectedCode);
+    }
+    if (m_cursorLine != -1) {
+        contextMessage += QString("当前光标位置: 行 %1, 列 %2. ").arg(m_cursorLine).arg(m_cursorCol);
+    }
+    contextMessage += "请根据用户的问题和提供的上下文进行回答，如果涉及代码，请使用Markdown代码块格式返回。";
+
+
+    QJsonObject systemMessageObj;
+    systemMessageObj["role"] = "system";
+    systemMessageObj["content"] = contextMessage;
+    messagesArray.append(systemMessageObj);
+
+    // 添加用户消息
+    QJsonObject userMessageObj;
+    userMessageObj["role"] = "user"; // 消息角色为用户
+    userMessageObj["content"] = userMessage; // 消息内容
+    messagesArray.append(userMessageObj);
 
     QJsonObject requestObj;
     requestObj["model"] = "deepseek-chat"; // 指定 DeepSeek 聊天模型
     requestObj["messages"] = messagesArray;
     requestObj["temperature"] = 0.7; // 设置生成温度，控制回答的随机性
+    requestObj["stream"] = false; // 不使用流式传输，一次性获取完整响应
 
     QJsonDocument jsonDoc(requestObj);
     return jsonDoc.toJson(); // 返回 JSON 文档的字节数组形式
+}
+
+// 新增：处理文件操作下拉菜单的选择
+void DeepSeekChatDialog::handleFileOperation(int index)
+{
+    switch (index) {
+    case 1: // 加载本地文件...
+        loadFileIntoChat();
+        break;
+    case 2: // 保存 AI 生成内容为...
+        saveFileContent();
+        break;
+    default:
+        break;
+    }
+    // 重置下拉菜单到默认项，以便再次选择
+    m_fileOperationsComboBox->setCurrentIndex(0);
+}
+
+// 新增：将 DeepSeek 生成的代码插入到编辑器
+void DeepSeekChatDialog::insertCodeFromResponse()
+{
+    QString codeToInsert = m_responseCodeDisplay->toPlainText();
+    if (codeToInsert.isEmpty()) {
+        QMessageBox::warning(this, "插入代码", "没有 AI 生成的代码可供插入。");
+        return;
+    }
+
+    // 发射信号给 My_IDE 主窗口，让它处理代码插入
+    // 如果有选中代码，则替换选中部分；否则在光标处插入
+    if (!m_selectedCode.isEmpty() && m_selectionStartLine != -1 && m_selectionEndLine != -1) {
+        emit insertCodeRequested(codeToInsert, m_selectionStartLine, m_selectionEndLine);
+    } else if (m_cursorLine != -1) {
+        // 如果没有选中，但在已知光标位置，可以在光标行插入
+        emit insertCodeRequested(codeToInsert, m_cursorLine, m_cursorLine); // 简单起见，替换光标所在行
+    } else {
+        // 如果什么信息都没有，就让主窗口在当前光标处插入
+        emit insertCodeRequested(codeToInsert, -1, -1);
+    }
+
+    QMessageBox::information(this, "插入代码", "代码插入请求已发送到主编辑器。");
+}
+
+// 新增：将 DeepSeek 生成的文件内容保存为新文件
+void DeepSeekChatDialog::saveFileContent()
+{
+    QString contentToSave = m_responseCodeDisplay->toPlainText();
+    if (contentToSave.isEmpty()) {
+        QMessageBox::warning(this, "保存文件", "没有 AI 生成的内容可供保存。");
+        return;
+    }
+
+    QString defaultFileName = "untitled.txt";
+    if (!m_currentFilePath.isEmpty()) {
+        QFileInfo fileInfo(m_currentFilePath);
+        defaultFileName = fileInfo.fileName();
+        if (defaultFileName.contains('.')) {
+            // 尝试保留扩展名，或建议新的
+            defaultFileName.insert(defaultFileName.lastIndexOf('.'), "_ai_generated");
+        } else {
+            defaultFileName += "_ai_generated.txt";
+        }
+    }
+
+
+    QString filePath = QFileDialog::getSaveFileName(this, "保存 AI 生成内容",
+                                                    QDir::currentPath() + "/" + defaultFileName,
+                                                    "All Files (*);;Text Files (*.txt);;C/C++ Files (*.c *.cpp *.h)");
+
+    if (filePath.isEmpty()) {
+        return; // 用户取消
+    }
+
+    QFile file(filePath);
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QTextStream out(&file);
+        out << contentToSave;
+        file.close();
+        QMessageBox::information(this, "保存成功", QString("AI 生成内容已保存到:\n%1").arg(filePath));
+    } else {
+        QMessageBox::critical(this, "保存失败", QString("无法保存文件:\n%1\n错误: %2").arg(filePath, file.errorString()));
+    }
+}
+
+// 新增：加载本地文件内容到聊天上下文
+void DeepSeekChatDialog::loadFileIntoChat()
+{
+    QString filePath = QFileDialog::getOpenFileName(this, "加载本地文件", QDir::currentPath(),
+                                                    "All Files (*);;Text Files (*.txt);;C/C++ Files (*.c *.cpp *.h)");
+
+    if (filePath.isEmpty()) {
+        return; // 用户取消
+    }
+
+    QFile file(filePath);
+    if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QTextStream in(&file);
+        QString fileContent = in.readAll();
+        file.close();
+
+        m_fileContentDisplay->setPlainText(fileContent); // 在对话框中显示加载的文件内容
+        m_editorContent = fileContent; // 更新上下文，以便下次发送消息时包含
+        m_currentFilePath = filePath; // 更新文件路径上下文
+        m_selectedCode = ""; // 清除选中代码，因为是加载整个文件
+        m_selectionStartLine = -1;
+        m_selectionEndLine = -1;
+
+        QMessageBox::information(this, "文件加载成功", QString("文件 '%1' 已加载到 AI 助手上下文。").arg(QFileInfo(filePath).fileName()));
+    } else {
+        QMessageBox::critical(this, "文件加载失败", QString("无法打开文件:\n%1\n错误: %2").arg(filePath, file.errorString()));
+    }
 }
