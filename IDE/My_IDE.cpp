@@ -157,12 +157,6 @@ void My_IDE::initMenuSystem()
     debug->addSeparator();
     debug->addAction(debug_toggleBreakpoint);
 
-    // 帮助菜单
-    help = menuBar()->addMenu("帮助");
-    help_about = new QAction("关于", this);
-    help_about->setShortcut(tr("Ctrl+H"));
-    help->addAction(help_about);
-
     // 设置菜单
     settings = this->menuBar()->addMenu("设置");
     settings_fontsize = new QAction("设置字体大小", this);
@@ -171,6 +165,12 @@ void My_IDE::initMenuSystem()
     // 在设置菜单中添加颜色模式切换
     settings_toggleColor = new QAction("切换深色/浅色模式", this);
     settings->addAction(settings_toggleColor);
+
+    // 帮助菜单
+    help = menuBar()->addMenu("帮助");
+    help_about = new QAction("关于", this);
+    help_about->setShortcut(tr("Ctrl+H"));
+    help->addAction(help_about);
 
     // 连接所有信号槽
     connectActions();
@@ -248,8 +248,8 @@ void My_IDE::on_about()
 {
     QMessageBox::information(this, "关于 My_IDE",
                              "My_IDE 是一个基于 Qt 的简单 C/C++ 集成开发环境。\n"
-                             "版本: 1.0\n"
-                             "作者: [你的名字]");
+                             "开源文档：https://github.com/lblllbbblb/-IDE-C-C-\n"
+                             "作者: 日志管理员：田澄锐  github版本管理员：李博\n组长：田澄锐\n组员：李博，徐绍祺，杨奇威，章一沛（姓氏首字母排序)\n时间：2025年9月");
 }
 
 void My_IDE::on_exit()
@@ -439,7 +439,7 @@ void My_IDE::on_toggleColorMode()
     m_isDarkMode = !m_isDarkMode;
     applyColorMode(m_isDarkMode);
     QString mode = m_isDarkMode ? "深色" : "浅色";
-    QMessageBox::information(this, "模式切换", QString("已切换到%1模式").arg(mode));
+    QMessageBox::information(this, "模式切换", QString("已切换到%1模式，请切换文本进行刷新").arg(mode));
 }
 
 void My_IDE::applyColorMode(bool darkMode)
