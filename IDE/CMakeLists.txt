@@ -32,6 +32,7 @@ set(PROJECT_SOURCES
         formatter.h
         formatter.cpp
         Resources.qrc
+
         debuggermanager.h
         debuggermanager.cpp
         breakpointmanager.h

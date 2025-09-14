@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/">
         <file>icons/IDE.png</file>
+        <file>icons/deepseek.png</file>
     </qresource>
 </RCC>
