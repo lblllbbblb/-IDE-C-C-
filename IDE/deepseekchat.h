@@ -12,8 +12,8 @@
 #include <QPushButton>
 #include <QLabel>
 #include <QSettings> // 用于保存和加载API密钥
-#include <QComboBox> // 新增：用于文件操作的下拉菜单
-#include <QRegularExpression> // 【修复】新增：用于正则表达式匹配，替代QRegExp
+#include <QComboBox> // 用于文件操作的下拉菜单
+#include <QRegularExpression> // 用于正则表达式匹配，替代QRegExp
 
 // 定义 DeepSeekChatDialog 类，继承自 QDialog
 class DeepSeekChatDialog : public QDialog
@@ -34,7 +34,7 @@ public:
     ~DeepSeekChatDialog(); // 析构函数
 
 signals:
-    // 新增信号：请求将代码插入到主 IDE 的编辑器中
+    // 信号：请求将代码插入到主 IDE 的编辑器中
     void insertCodeRequested(const QString &code, int startLine, int endLine);
 
 private slots:
@@ -43,7 +43,7 @@ private slots:
     void setApiKey(); // 设置 DeepSeek API 密钥
     void toggleApiKeyVisibility(); // 切换 API 密钥的显示/隐藏
 
-    // 新增槽函数，用于文件操作和代码插入
+    // 槽函数，用于文件操作和代码插入
     void handleFileOperation(int index); // 处理文件操作下拉菜单的选择
     void insertCodeFromResponse(); // 将 DeepSeek 生成的代码插入到编辑器
     void saveFileContent(); // 将 DeepSeek 生成的文件内容保存为新文件

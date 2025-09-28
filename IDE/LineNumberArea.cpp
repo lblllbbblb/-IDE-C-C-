@@ -14,7 +14,7 @@ void LineNumberArea::paintEvent(QPaintEvent *event) {
     static_cast<CodeEditor*>(editor)->lineNumberAreaPaintEvent(event);
 }
 
-// 新增：鼠标按下事件处理
+// 鼠标按下事件处理
 void LineNumberArea::mousePressEvent(QMouseEvent *event) {
     // 将点击事件传递给 CodeEditor 处理
     static_cast<CodeEditor*>(editor)->lineNumberAreaClicked(event->y());

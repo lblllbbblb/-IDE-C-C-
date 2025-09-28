@@ -37,7 +37,7 @@ void TabWidgetManager::initializeEditor(CodeEditor *editor)
 {
     editor->setFont(QFont("Consolas", 12));
     editor->setLineWrapMode(QPlainTextEdit::NoWrap);
-    // 为每个编辑器创建高亮器。注意，这里我们将 CppHighlighter 的父对象设置为 editor->document()
+    // 为每个编辑器创建高亮器
     new CppHighlighter(editor->document());
     new BracketMatcher(editor, this);       // 为每个编辑器创建括号匹配器
     // FindReplaceDialog 不需要为每个编辑器创建，它会操作当前活动的编辑器
@@ -260,12 +260,12 @@ void TabWidgetManager::compileAndRunCurrentFile()
     runCurrentFile();
 }
 
-void TabWidgetManager::copy() { if (currentEditor()) currentEditor()->copy(); }
-void TabWidgetManager::paste() { if (currentEditor()) currentEditor()->paste(); }
-void TabWidgetManager::cut() { if (currentEditor()) currentEditor()->cut(); }
-void TabWidgetManager::selectAll() { if (currentEditor()) currentEditor()->selectAll(); }
-void TabWidgetManager::undo() { if (currentEditor()) currentEditor()->undo(); }
-void TabWidgetManager::redo() { if (currentEditor()) currentEditor()->redo(); }
+void TabWidgetManager::copy() { if (currentEditor()) currentEditor()->copy(); } // 复制
+void TabWidgetManager::paste() { if (currentEditor()) currentEditor()->paste(); } // 粘贴
+void TabWidgetManager::cut() { if (currentEditor()) currentEditor()->cut(); } // 剪切
+void TabWidgetManager::selectAll() { if (currentEditor()) currentEditor()->selectAll(); } // 全选
+void TabWidgetManager::undo() { if (currentEditor()) currentEditor()->undo(); } // 撤销
+void TabWidgetManager::redo() { if (currentEditor()) currentEditor()->redo(); } // 重做
 
 void TabWidgetManager::showFindReplaceDialog()
 {

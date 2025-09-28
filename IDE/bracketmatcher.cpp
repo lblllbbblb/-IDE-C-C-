@@ -191,7 +191,7 @@ bool BracketMatcher::eventFilter(QObject *obj, QEvent *event)
             }
         }
 
-        // 核心修改：处理{后回车，实现{和}对齐且中间空一行
+        // 处理{后回车，实现{和}对齐且中间空一行
         else if ((keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter) &&
                  !keyEvent->modifiers().testFlag(Qt::ShiftModifier)) {
 

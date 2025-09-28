@@ -3,7 +3,7 @@
 
 Formatter::Formatter()
 {
-    // 可以在这里进行一些初始化，如果需要的话
+    // 可以在这里进行一些初始化
 }
 
 QString Formatter::formatCppCode(const QString &code)
@@ -25,8 +25,7 @@ QString Formatter::applyFormattingRules(const QString &code)
 {
     QString processedCode = code;
 
-    // 示例规则：在操作符前后添加空格
-    // 注意：这只是一个非常简单的例子，实际的格式化器需要更复杂的解析来避免错误地修改字符串字面量或注释
+    // 在操作符前后添加空格
     for(int i=100;i;i--)processedCode.replace("  ", " ");
     processedCode.replace("=", " = ");
     processedCode.replace("<", " < ");

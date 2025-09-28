@@ -7,7 +7,7 @@
 #include "cpphighlighter.h"
 #include "bracketmatcher.h"
 #include "findreplacedialog.h"
-#include "colorrefresher.h" // 新增：包含 ColorRefresher 头文件
+#include "colorrefresher.h"
 
 class TabWidgetManager : public QObject
 {
@@ -53,7 +53,6 @@ private slots:
 
 private:
     QTabWidget *m_tabWidget;
-    // 新增：ColorRefresher 实例
     ColorRefresher *m_colorRefresher;
 
 

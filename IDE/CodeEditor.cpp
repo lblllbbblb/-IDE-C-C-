@@ -24,10 +24,10 @@ CodeEditor::CodeEditor(QWidget *parent)
     connect(this, &QPlainTextEdit::cursorPositionChanged,
             this, &CodeEditor::highlightCurrentLine);
 
-    // 新增：连接文档内容改变信号，用于更新折叠区域
+    //连接文档内容改变信号，用于更新折叠区域
     connect(this, &QPlainTextEdit::textChanged,
             this, &CodeEditor::updateFoldingRegions);
-    // 新增：连接 blockCountChanged 信号，用于处理行数变化对折叠区域的影响
+    //连接 blockCountChanged 信号，用于处理行数变化对折叠区域的影响
     connect(this, &QPlainTextEdit::blockCountChanged,
             this, &CodeEditor::handleBlockCountChanged);
 
@@ -55,7 +55,7 @@ int CodeEditor::lineNumberAreaWidth() {
 
     // 添加一些边距，确保数字不会太靠近边缘
     int margin = 5;
-    // 新增：加上折叠指示器的宽度
+    // 加上折叠指示器的宽度
     return margin + fm.horizontalAdvance(QLatin1Char('9')) * digits + m_foldingIndicatorWidth;
 }
 // 添加以下三个函数的实现
@@ -295,7 +295,7 @@ void CodeEditor::toggleFolding(int lineNumber) {
     }
 }
 
-// 新增：根据 m_foldingBlocks 应用折叠状态
+// 根据 m_foldingBlocks 应用折叠状态
 void CodeEditor::applyFolding() {
     // 遍历所有文本块
     QTextBlock block = document()->begin();
@@ -319,7 +319,7 @@ void CodeEditor::applyFolding() {
     viewport()->update();
 }
 
-// 新增：更新折叠区域信息
+// 更新折叠区域信息
 void CodeEditor::updateFoldingRegions() {
     m_foldingBlocks.clear(); // 清空原有折叠区域
 
@@ -358,13 +358,13 @@ void CodeEditor::updateFoldingRegions() {
     lineNumberArea->update(); // 强制行号区域重绘
 }
 
-// 新增：处理行数变化
+// 处理行数变化
 void CodeEditor::handleBlockCountChanged(int newBlockCount) {
     // 当行数变化时，需要重新分析折叠区域
     updateFoldingRegions();
 }
 
-// 新增：判断某行是否被折叠
+// 判断某行是否被折叠
 bool CodeEditor::isLineFolded(int lineNumber) const {
     for (const FoldingBlock& fb : m_foldingBlocks) {
         if (fb.isFolded && lineNumber > fb.startLine && lineNumber <= fb.endLine) {
@@ -374,7 +374,7 @@ bool CodeEditor::isLineFolded(int lineNumber) const {
     return false;
 }
 
-// 新增：判断某行是否是已折叠区域的起始行
+// 判断某行是否是已折叠区域的起始行
 bool CodeEditor::isLineStartOfFoldedBlock(int lineNumber) const {
     for (const FoldingBlock& fb : m_foldingBlocks) {
         if (fb.isFolded && fb.startLine == lineNumber) {
@@ -479,7 +479,7 @@ void CodeEditor::insertCompletion(const QString &completion) {
     // 获取当前补全前缀的长度（即用户已经输入的部分）
     int prefixLength = m_completer->completionPrefix().length();
 
-    // 关键修复：删除光标前的前缀内容（避免补全内容与原有内容重叠）
+    // 删除光标前的前缀内容（避免补全内容与原有内容重叠）
     cursor.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, prefixLength);
     cursor.removeSelectedText();
 

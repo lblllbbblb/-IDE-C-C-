@@ -7,7 +7,7 @@
 #include <QFile>    // 用于文件操作
 #include <QFileDialog> // 用于文件对话框
 #include <QTextStream> // 用于读写文件
-#include <QFrame> // 【修复】新增：用于模拟分隔线
+#include <QFrame> // 用于模拟分隔线
 
 DeepSeekChatDialog::DeepSeekChatDialog(
     QWidget *parent,
@@ -119,7 +119,7 @@ DeepSeekChatDialog::DeepSeekChatDialog(
     mainLayout->addLayout(apiKeyLayout);
     mainLayout->addWidget(m_statusLabel); // 添加状态标签
 
-    // 【修复】使用 QFrame 模拟分隔线
+    // 使用 QFrame 模拟分隔线
     QFrame *separator1 = new QFrame(this);
     separator1->setFrameShape(QFrame::HLine);
     separator1->setFrameShadow(QFrame::Sunken);
@@ -128,7 +128,7 @@ DeepSeekChatDialog::DeepSeekChatDialog(
     mainLayout->addWidget(new QLabel("当前文件/加载的文件内容:", this));
     mainLayout->addWidget(m_fileContentDisplay);
 
-    // 【修复】使用 QFrame 模拟分隔线
+    // 使用 QFrame 模拟分隔线
     QFrame *separator2 = new QFrame(this);
     separator2->setFrameShape(QFrame::HLine);
     separator2->setFrameShadow(QFrame::Sunken);
@@ -146,7 +146,7 @@ DeepSeekChatDialog::DeepSeekChatDialog(
     connect(m_setApiKeyButton, &QPushButton::clicked, this, &DeepSeekChatDialog::setApiKey);
     connect(m_toggleApiKeyButton, &QPushButton::toggled, this, &DeepSeekChatDialog::toggleApiKeyVisibility);
 
-    // 新增：文件操作和代码插入的连接
+    // 文件操作和代码插入的连接
     connect(m_insertCodeButton, &QPushButton::clicked, this, &DeepSeekChatDialog::insertCodeFromResponse);
     connect(m_saveFileButton, &QPushButton::clicked, this, &DeepSeekChatDialog::saveFileContent);
     connect(m_fileOperationsComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &DeepSeekChatDialog::handleFileOperation);
@@ -260,15 +260,12 @@ void DeepSeekChatDialog::handleNetworkReply(QNetworkReply *reply)
                             QString assistantResponse = messageObj["content"].toString();
                             appendMessage("DeepSeek AI", assistantResponse); // 在聊天显示区添加 AI 回复
 
-                            // 提取代码片段并显示在 m_responseCodeDisplay
-                            // 这里可以更智能地解析，例如查找 Markdown 代码块
-                            // 简单示例：直接将整个响应显示为代码，或提取第一个```代码块
-                            // 【修复】使用 QRegularExpression 替代 QRegExp
+                            // 提取代码片段并显示在 m_responseCodeDisplay，使用 QRegularExpression 替代 QRegExp
                             QRegularExpression codeBlockRegex("```[a-zA-Z]*\\n([\\s\\S]*?)\\n```");
                             QRegularExpressionMatch match = codeBlockRegex.match(assistantResponse);
 
-                            if (match.hasMatch()) { // 【修复】检查是否有匹配
-                                QString code = match.captured(1).trimmed(); // 【修复】捕获第一个括号内的内容
+                            if (match.hasMatch()) { // 检查是否有匹配
+                                QString code = match.captured(1).trimmed(); // 捕获第一个括号内的内容
                                 m_responseCodeDisplay->setPlainText(code);
                                 m_insertCodeButton->setEnabled(true);
                                 m_saveFileButton->setEnabled(true);
@@ -366,7 +363,7 @@ QByteArray DeepSeekChatDialog::buildRequestJson(const QString &userMessage)
     return jsonDoc.toJson(); // 返回 JSON 文档的字节数组形式
 }
 
-// 新增：处理文件操作下拉菜单的选择
+// 处理文件操作下拉菜单的选择
 void DeepSeekChatDialog::handleFileOperation(int index)
 {
     switch (index) {
@@ -383,7 +380,7 @@ void DeepSeekChatDialog::handleFileOperation(int index)
     m_fileOperationsComboBox->setCurrentIndex(0);
 }
 
-// 新增：将 DeepSeek 生成的代码插入到编辑器
+// 将 DeepSeek 生成的代码插入到编辑器
 void DeepSeekChatDialog::insertCodeFromResponse()
 {
     QString codeToInsert = m_responseCodeDisplay->toPlainText();
@@ -407,7 +404,7 @@ void DeepSeekChatDialog::insertCodeFromResponse()
     QMessageBox::information(this, "插入代码", "代码插入请求已发送到主编辑器。");
 }
 
-// 新增：将 DeepSeek 生成的文件内容保存为新文件
+// 将 DeepSeek 生成的文件内容保存为新文件
 void DeepSeekChatDialog::saveFileContent()
 {
     QString contentToSave = m_responseCodeDisplay->toPlainText();
@@ -448,7 +445,7 @@ void DeepSeekChatDialog::saveFileContent()
     }
 }
 
-// 新增：加载本地文件内容到聊天上下文
+// 加载本地文件内容到聊天上下文
 void DeepSeekChatDialog::loadFileIntoChat()
 {
     QString filePath = QFileDialog::getOpenFileName(this, "加载本地文件", QDir::currentPath(),

@@ -5,6 +5,7 @@
 #include <QRegularExpression>
 #include <QDebug>
 
+// 构造函数
 DebuggerManager::DebuggerManager(QObject *parent)
     : QObject(parent), m_gdbProcess(nullptr), m_outputWidget(nullptr)
 {
@@ -13,6 +14,7 @@ DebuggerManager::DebuggerManager(QObject *parent)
     m_gdbBreakpointIds.clear();
 }
 
+// 析构函数
 DebuggerManager::~DebuggerManager()
 {
     if (m_gdbProcess && m_gdbProcess->state() != QProcess::NotRunning) {
@@ -22,6 +24,7 @@ DebuggerManager::~DebuggerManager()
     delete m_gdbProcess;
 }
 
+// 获取 GDB 路径
 QString DebuggerManager::getGdbPath() const
 {
 #ifdef Q_OS_WIN
@@ -31,6 +34,7 @@ QString DebuggerManager::getGdbPath() const
 #endif
 }
 
+// 开始调试
 void DebuggerManager::startDebugging(const QString &executablePath)
 {
     if (m_gdbProcess && m_gdbProcess->state() != QProcess::NotRunning) {
@@ -78,6 +82,7 @@ void DebuggerManager::startDebugging(const QString &executablePath)
     appendToOutput("调试已启动...\n", Qt::green);
 }
 
+// 停止调试
 void DebuggerManager::stopDebugging()
 {
     if (m_gdbProcess && m_gdbProcess->state() != QProcess::NotRunning) {
@@ -92,6 +97,7 @@ void DebuggerManager::stopDebugging()
     }
 }
 
+// 设置断点
 void DebuggerManager::setBreakpoint(const QString &filePath, int lineNumber)
 {
     // 添加断点到断点管理器
@@ -109,6 +115,7 @@ void DebuggerManager::setBreakpoint(const QString &filePath, int lineNumber)
     appendToOutput(QString("断点已设置：%1:%2\n").arg(filePath).arg(lineNumber), Qt::blue);
 }
 
+// 清除断点
 void DebuggerManager::clearBreakpoint(const QString &filePath, int lineNumber)
 {
     if (m_breakpoints.contains(filePath)) {
@@ -122,6 +129,7 @@ void DebuggerManager::clearBreakpoint(const QString &filePath, int lineNumber)
     appendToOutput(QString("断点已清除：%1:%2\n").arg(filePath).arg(lineNumber), Qt::red);
 }
 
+// 切换断点（设置或清除）
 void DebuggerManager::toggleBreakpoint(const QString &filePath, int lineNumber)
 {
     if (m_breakpoints.contains(filePath) && m_breakpoints[filePath].contains(lineNumber)) {
@@ -131,6 +139,7 @@ void DebuggerManager::toggleBreakpoint(const QString &filePath, int lineNumber)
     }
 }
 
+// 继续执行
 void DebuggerManager::continueExecution()
 {
     if (m_gdbProcess && m_gdbProcess->state() != QProcess::NotRunning) {
@@ -138,6 +147,7 @@ void DebuggerManager::continueExecution()
     }
 }
 
+// 步入
 void DebuggerManager::stepInto()
 {
     if (m_gdbProcess && m_gdbProcess->state() != QProcess::NotRunning) {
@@ -145,6 +155,7 @@ void DebuggerManager::stepInto()
     }
 }
 
+// 步过
 void DebuggerManager::stepOver()
 {
     if (m_gdbProcess && m_gdbProcess->state() != QProcess::NotRunning) {
@@ -152,6 +163,7 @@ void DebuggerManager::stepOver()
     }
 }
 
+// 步出
 void DebuggerManager::stepOut()
 {
     if (m_gdbProcess && m_gdbProcess->state() != QProcess::NotRunning) {
@@ -159,6 +171,7 @@ void DebuggerManager::stepOut()
     }
 }
 
+// 检查变量
 void DebuggerManager::inspectVariable(const QString &variableName)
 {
     if (m_gdbProcess && m_gdbProcess->state() != QProcess::NotRunning) {
@@ -166,11 +179,13 @@ void DebuggerManager::inspectVariable(const QString &variableName)
     }
 }
 
+// 设置输出窗口
 void DebuggerManager::setOutputWidget(QTextEdit *output)
 {
     m_outputWidget = output;
 }
 
+// 向 GDB 发送命令
 void DebuggerManager::sendCommandToGdb(const QString &command)
 {
     if (m_gdbProcess && m_gdbProcess->state() != QProcess::NotRunning) {
@@ -180,6 +195,7 @@ void DebuggerManager::sendCommandToGdb(const QString &command)
     }
 }
 
+// 处理 GDB 标准输出
 void DebuggerManager::onGdbReadyReadStandardOutput()
 {
     QByteArray data = m_gdbProcess->readAllStandardOutput();
@@ -203,6 +219,7 @@ void DebuggerManager::onGdbReadyReadStandardOutput()
     }
 }
 
+// 处理 GDB 标准错误输出
 void DebuggerManager::onGdbReadyReadStandardError()
 {
     QByteArray data = m_gdbProcess->readAllStandardError();
@@ -211,6 +228,7 @@ void DebuggerManager::onGdbReadyReadStandardError()
     appendToOutput(error, Qt::red);
 }
 
+// 处理 GDB 进程结束
 void DebuggerManager::onGdbFinished(int exitCode, QProcess::ExitStatus exitStatus)
 {
     Q_UNUSED(exitCode);
@@ -219,6 +237,7 @@ void DebuggerManager::onGdbFinished(int exitCode, QProcess::ExitStatus exitStatu
     stopDebugging(); // 确保清理
 }
 
+// 追加文本到输出窗口
 void DebuggerManager::appendToOutput(const QString &text, const QColor &color)
 {
     if (m_outputWidget) {

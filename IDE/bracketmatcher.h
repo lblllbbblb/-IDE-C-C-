@@ -33,7 +33,7 @@ private:
     // 辅助函数：获取当前行的缩进字符串
     QString getCurrentIndentation(const QTextCursor& cursor);
 
-    // 新增：检查前一个字符是否是转义字符（用于引号处理）
+    // 检查前一个字符是否是转义字符（用于引号处理）
     bool isPreviousCharEscape(const QTextCursor& cursor);
 };
 

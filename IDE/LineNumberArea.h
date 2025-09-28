@@ -16,7 +16,7 @@ public:
 protected:
     // 绘制事件委托给编辑器
     void paintEvent(QPaintEvent *event) override;
-    // 新增：鼠标按下事件
+    // 鼠标按下事件
     void mousePressEvent(QMouseEvent *event) override;
 
 private:
