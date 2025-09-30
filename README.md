@@ -1,6 +1,5 @@
 # 北理大二电信小学期-C/C++语言IDE项目  
-北京理工大学大二徐特立英才班电子信息工程专业小学期-C/C++语言IDE集成开发环境项目\n
-Beijing Institute of Technology(BIT) Sophomore Electronic Information Engineering Major Summer Session C/C++ IDE Project
+北京理工大学大二徐特立英才班电子信息工程专业小学期-C/C++语言IDE集成开发环境项目
 
 <img width="256" height="256" alt="icon - 副本" src="https://github.com/user-attachments/assets/662b64a0-e2d7-4c1d-a130-81ae3a71e3db" />
 
@@ -12,6 +11,7 @@ Beijing Institute of Technology(BIT) Sophomore Electronic Information Engineerin
 
 组长：田澄锐  github管理员：李博  组员：李博，徐绍祺，杨奇威，章一沛（按照首字母排序）
 
+Beijing Institute of Technology(BIT) Sophomore Electronic Information Engineering Major Summer Session C/C++ IDE Project
 This C/C++ IDE offers a complete suite of basic functionalities and extensive advanced features.
 Core Editing & File Management:
 It provides essential file operations including creating, opening, saving, and "save as" for efficient multi-file project handling. Text editing is robust, featuring standard select all, copy, paste, and cut, alongside find/replace, undo, and redo capabilities.
