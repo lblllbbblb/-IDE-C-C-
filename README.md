@@ -11,7 +11,7 @@
 
 组长：田澄锐  github管理员：李博  组员：李博，徐绍祺，杨奇威，章一沛（按照首字母排序）
 
-Beijing Institute of Technology(BIT) Sophomore Electronic Information Engineering Major Summer Session C/C++ IDE Project
+# Beijing Institute of Technology(BIT) Sophomore Electronic Information Engineering Major Summer Session C/C++ IDE Project
 This C/C++ IDE offers a complete suite of basic functionalities and extensive advanced features.
 Core Editing & File Management:
 It provides essential file operations including creating, opening, saving, and "save as" for efficient multi-file project handling. Text editing is robust, featuring standard select all, copy, paste, and cut, alongside find/replace, undo, and redo capabilities.
